@@ -361,6 +361,12 @@ message LayerParameter {
   // engine parameter for selecting the implementation.
   // The default for the engine is set by the ENGINE switch at compile-time.
   optional AccuracyParameter accuracy_param = 102;
+  optional AccuracyGazeParameter accuracy_gaze_param = 147;
+  optional EuclideanGazeLossParameter gaze_loss_param = 148;
+  optional EntropyParameter entropy_param = 149;
+  optional GradientScalerParameter gradient_scaler_param = 150;
+  optional MMDParameter mmd_param = 151;
+  optional JMMDParameter jmmd_param = 152;
   optional ArgMaxParameter argmax_param = 103;
   optional BatchNormParameter batch_norm_param = 139;
   optional BiasParameter bias_param = 141;
@@ -405,6 +411,38 @@ message LayerParameter {
   optional ThresholdParameter threshold_param = 128;
   optional TileParameter tile_param = 138;
   optional WindowDataParameter window_data_param = 129;
+}
+
+//Message that stores parameters used by Entropy layer
+message EntropyParameter {
+  optional float threshold = 1 [default = 0.001];
+  optional uint32 ignore_label = 2[default = 999];
+  optional uint32 iterations_num = 3[default = 0];
+}
+
+message GradientScalerParameter {
+// GradientScalerLayer scales deltas according to the schedule:
+// 2 * height / (1 + exp(-alpha * (iter / max_iter))) - height + lower_bound,
+// where height = upper_bound - lower_bound
+  optional float lower_bound = 1 [default = 0.0];
+  optional float upper_bound = 2 [default = 1.0];
+  optional float alpha = 3 [default = 10.0];
+  optional float max_iter = 4 [default = 1];
+  optional uint32 threshold_iter = 5 [default = 0];
+}
+
+message MMDParameter {
+  optional uint32 kernel_num = 1 [default = 5];
+  optional float kernel_mul = 2 [default = 2];
+  optional bool fix_gamma = 3 [default = false];
+}
+
+// Message that stores parameters used by JMMD layer
+message JMMDParameter {
+  optional uint32 kernel_num = 1 [default = 1];
+  optional float kernel_mul = 6[default = 2];
+  optional float label_kernel_mul = 4 [default = 2];
+  optional uint32 label_kernel_num = 5 [default = 1];
 }
 
 // Message that stores parameters used to apply transformation
@@ -458,11 +496,55 @@ message LossParameter {
   // normalization = BATCH_SIZE to be consistent with previous behavior.
   optional bool normalize = 2;
 }
+message EuclideanGazeLossParameter {
+  // If specified, ignore instances with the given label.
+  optional int32 ignore_label = 1;
+  // How to normalize the loss for loss layers that aggregate across batches,
+  // spatial dimensions, or other dimensions.  Currently only implemented in
+  // SoftmaxWithLoss and SigmoidCrossEntropyLoss layers.
+  enum NormalizationMode {
+    // Divide by the number of examples in the batch times spatial dimensions.
+    // Outputs that receive the ignore label will NOT be ignored in computing
+    // the normalization factor.
+    FULL = 0;
+    // Divide by the total number of output locations that do not take the
+    // ignore_label.  If ignore_label is not set, this behaves like FULL.
+    VALID = 1;
+    // Divide by the batch size.
+    BATCH_SIZE = 2;
+    // Do not normalize the loss.
+    NONE = 3;
+  }
+  // For historical reasons, the default normalization for
+  // SigmoidCrossEntropyLoss is BATCH_SIZE and *not* VALID.
+  optional NormalizationMode normalization = 3 [default = VALID];
+  // Deprecated.  Ignored if normalization is specified.  If normalization
+  // is not specified, then setting this to false will be equivalent to
+  // normalization = BATCH_SIZE to be consistent with previous behavior.
+  optional bool normalize = 2;
+}
 
 // Messages that store parameters used by individual layer types follow, in
 // alphabetical order.
 
 message AccuracyParameter {
+  // When computing accuracy, count as correct by comparing the true label to
+  // the top k scoring classes.  By default, only compare to the top scoring
+  // class (i.e. argmax).
+  optional uint32 top_k = 1 [default = 1];
+
+  // The "label" axis of the prediction blob, whose argmax corresponds to the
+  // predicted label -- may be negative to index from the end (e.g., -1 for the
+  // last axis).  For example, if axis == 1 and the predictions are
+  // (N x C x H x W), the label blob is expected to contain N*H*W ground truth
+  // labels with integer values in {0, 1, ..., C-1}.
+  optional int32 axis = 2 [default = 1];
+
+  // If specified, ignore instances with the given label.
+  optional int32 ignore_label = 3;
+}
+
+message AccuracyGazeParameter {
   // When computing accuracy, count as correct by comparing the true label to
   // the top k scoring classes.  By default, only compare to the top scoring
   // class (i.e. argmax).
