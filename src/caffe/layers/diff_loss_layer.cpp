@@ -1,7 +1,7 @@
 
 #include <vector>
 
-#include "caffe/filler.hpp"
+// #include "caffe/filler.hpp"
 #include "caffe/layers/diff_loss_layer.hpp"
 #include "caffe/util/math_functions.hpp"
 
@@ -14,8 +14,7 @@ namespace caffe {
   CHECK_EQ(bottom[0]->channels(), bottom[1]->channels());
   CHECK_EQ(bottom[0]->height(), bottom[1]->height());
   CHECK_EQ(bottom[0]->width(), bottom[1]->width());
-  diff_.Reshape(bottom[0]->num(), bottom[0]->channels(),
-      bottom[0]->height(), bottom[0]->width());
+  // diff_.Reshape(bottom[0]->num(), bottom[0]->channels(),bottom[0]->height(), bottom[0]->width());
   }
   
   template <typename Dtype>
@@ -25,11 +24,12 @@ namespace caffe {
     const Dtype* bottom_common = bottom[0]->cpu_data();
     const Dtype* bottom_private = bottom[1]->cpu_data();
     int num_batch = bottom[0]->num();
-    Dtype loss = 0;
+    int dim = bottom[0]->count() / bottom[0]->num();
+    Dtype loss = 0.0;
     
     for (int i = 0; i < num_batch; i++) {
       for (int j = 0; j < num_batch; j++) {
-	loss += caffe_cpu_dot(count, bottom_common[i], bottom_private[j]);
+	loss += caffe_cpu_dot(dim, bottom_common[i*dim], bottom_private[j*dim]);
       }
     }
     top[0]->mutable_cpu_data()[0] = loss;

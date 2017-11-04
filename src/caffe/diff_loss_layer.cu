@@ -32,7 +32,7 @@ namespace caffe {
 	loss += caffe_gpu_dot(count, bottom_common[i], bottom_private[j]);
       }
     }
-    top[0]->mutable_gpu_data()[0] = loss;
+    top[0]->mutable_cpu_data()[0] = loss;
   }
 
   template <typename Dtype>
@@ -40,7 +40,7 @@ namespace caffe {
 						      const vector<bool>& propagate_down,
 						      const vector<Blob<Dtype>*>& bottom) {
 
-    const Dtype l = top[0]->gpu_diff();
+    const Dtype l = top[0]->cpu_diff();
     const Dtype* HC_data = bottom[0]->gpu_diff();
     const Dtype* HP_data = bottom[1]->gpu_diff();
     int num_batch = bottom[0]->num();
