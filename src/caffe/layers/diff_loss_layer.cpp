@@ -1,4 +1,3 @@
-
 #include <vector>
 
 // #include "caffe/filler.hpp"
@@ -14,22 +13,23 @@ namespace caffe {
   CHECK_EQ(bottom[0]->channels(), bottom[1]->channels());
   CHECK_EQ(bottom[0]->height(), bottom[1]->height());
   CHECK_EQ(bottom[0]->width(), bottom[1]->width());
-  // diff_.Reshape(bottom[0]->num(), bottom[0]->channels(),bottom[0]->height(), bottom[0]->width());
+  alpha_.Reshape(bottom[0]->num(), bottom[0]->channels(),bottom[0]->height(), bottom[0]->width());
   }
   
   template <typename Dtype>
   void DiffLossLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
 						     const vector<Blob<Dtype>*>& top) {
-    int count = bottom[0]->count();
     const Dtype* bottom_common = bottom[0]->cpu_data();
     const Dtype* bottom_private = bottom[1]->cpu_data();
-    int num_batch = bottom[0]->num();
+    int batch_size = bottom[0]->num();
     int dim = bottom[0]->count() / bottom[0]->num();
     Dtype loss = 0.0;
-    
-    for (int i = 0; i < num_batch; i++) {
-      for (int j = 0; j < num_batch; j++) {
-	loss += caffe_cpu_dot(dim, bottom_common[i*dim], bottom_private[j*dim]);
+   
+    for (int i = 0; i < dim; i++) {
+      for (int j = 0; j < dim; j++) {
+	for (int k = 0; k < batch_size; k++) {    
+	  loss += bottom_common[k*dim + i] * bottom_private[k*dim + j] ;
+	}
       }
     }
     top[0]->mutable_cpu_data()[0] = loss;
@@ -40,60 +40,56 @@ namespace caffe {
 						      const vector<bool>& propagate_down,
 						      const vector<Blob<Dtype>*>& bottom) {
 
-    const Dtype l = top[0]->cpu_diff();
-    const Dtype* HC_data = bottom[0]->cpu_diff();
-    const Dtype* HP_data = bottom[1]->cpu_diff();
-    int num_batch = bottom[0]->num();
-    int num_chan = bottom[0]->channels;
-
-    int M = bottom[0]->shape(3);
-    int K = bottom[0]->shape(2);
-    int N = bottom[0]->shape(3);
-    Blob<Dtype> alpha;
-    alpha.Reshape(bottom[0]->num(), bottom[0]->channels, bottom[0]->width, bottom[1]->width);
-    Blob<Dtype> beta;
-    beta.Reshape(bottom[0]->num(), bottom[0]->channels, bottom[0]->width, bottom[1]->width);
-    for(int b = 0; b < num_batch; b++) {
-      for(int c = 0; c < num_chan; c++) {
-	if (propagate_down[0]) {
-	  caffe_cpu_gemm<Dtype>(CblasTrans, CblasNoTrans,
-				M, N, K,
-				(Dtype)2.0,
-				HC_data[b][c],
-				HP_data[b][c],
-				(Dtype)0.0,
-				alpha[b][c]);
-	  caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasTrans,
-				M, K, N,
-				(Dtype)1.0,
-				alpha[b][c],
-				HP_data[b][c],
-				(Dtype)0.0,
-				bottom[0]->mutable_cpu_diff()[b][c]);	  
-	}
-
-	if (propagate_down[1]) {
-	  caffe_cpu_gemm<Dtype>(CblasTrans, CblasNoTrans,
-				M, N, K,
-				(Dtype)2.0,
-				HC_data[b][c],
-				HP_data[b][c],
-				(Dtype)0.0,
-				beta[b][c]);
-	  caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans,
-				K, N, M,
-				(Dtype)1.0,
-				HC_data[b][c],
-				beta[b][c],
-				(Dtype)0.0,
-				bottom[1]->mutable_cpu_diff()[b][c]);	  
-
+    const Dtype l = top[0]->cpu_diff()[0];
+    const Dtype* bottom_common = bottom[0]->cpu_data();
+    const Dtype* bottom_private = bottom[1]->cpu_data();
+    Dtype* alpha_data = alpha_.mutable_cpu_data();
+    
+    int batch_size = bottom[0]->num();
+    int dim = bottom[0]->count() / bottom[0]->num();
+    
+    for (int i = 0; i < batch_size * dim; i++) {
+      alpha_data[i] = 0;
+    }
+    
+    for (int i = 0; i < dim; i++) {
+      for (int j = 0; j < dim; j++) {
+	for (int k = 0; k < batch_size; k++) {    
+	  alpha_data[i*dim + j] = bottom_common[k*dim + i] * bottom_private[k*dim + j] ;
+	  //	  caffe_cpu_axpby(
+	  //		  1,
+	  //		  bottom_common[k*dim + i],
+	  //		  bottom_private[k*dim + j],
+	  //		  Dtype(0),
+	  //		  alpha[i*dim + j]);
 	}
       }
     }
-  }
 
-  #ifdef CPU_ONLY
+    if (propagate_down[0]) {
+      for (int i = 0; i < batch_size; i++) {
+	for (int j = 0; j < batch_size; j++) {
+	  for (int k = 0; k < dim; k++) {    
+	    (bottom[0]->mutable_cpu_diff())[i*dim + j] = 2.0 * l * bottom_private[i*dim + k] * alpha_data[j*dim + k];
+	  }
+	}
+      }
+      
+    }
+    
+    if (propagate_down[1]) {
+      for (int i = 0; i < batch_size; i++) {
+	for (int j = 0; j < dim; j++) {
+	  for (int k = 0; k < dim; k++) {    
+	    (bottom[0]->mutable_cpu_diff())[i*dim + j] = 2.0 * l * bottom_common[i*dim + k] * alpha_data[k*dim + j] ;
+	  }
+	}
+      }
+    }
+    
+  }
+  
+#ifdef CPU_ONLY
   STUB_GPU(DiffLossLayer);
   #endif
 

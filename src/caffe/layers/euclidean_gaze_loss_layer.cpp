@@ -16,7 +16,7 @@ void EuclideanGazeLossLayer<Dtype>::Reshape(
       bottom[0]->height(), bottom[0]->width());
 }
 
-Template <typename Dtype>
+template <typename Dtype>
 void EuclideanGazeLossLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     const vector<Blob<Dtype>*>& top) {
   int count = bottom[0]->count();
