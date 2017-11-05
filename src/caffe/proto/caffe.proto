@@ -526,6 +526,7 @@ message EuclideanGazeLossParameter {
 }
 
 message DiffLossParameter {
+// /*
   // If specified, ignore instances with the given label.
   optional int32 ignore_label = 1;
   // How to normalize the loss for loss layers that aggregate across batches,
@@ -551,6 +552,7 @@ message DiffLossParameter {
   // is not specified, then setting this to false will be equivalent to
   // normalization = BATCH_SIZE to be consistent with previous behavior.
   optional bool normalize = 2;
+  // */
 }
 
 
