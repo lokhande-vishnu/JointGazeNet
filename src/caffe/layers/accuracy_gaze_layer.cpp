@@ -49,6 +49,10 @@ void AccuracyGazeLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     float norm_label = sqrt(label_x*label_x + label_y*label_y + label_z*label_z);
 
     float angle_value = (data_x*label_x+data_y*label_y+data_z*label_z) / (norm_data*norm_label);
+    if (angle_value > 1.0)
+      angle_value = 1.0;
+    else if (angle_value < -1.0)
+      angle_value = -1.0;
     accuracy += (acos(angle_value)*180)/3.1415926;
   }
 
