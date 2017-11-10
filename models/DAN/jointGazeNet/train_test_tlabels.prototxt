@@ -1,0 +1,339 @@
+name: "JointGazeNet"
+layer {
+  name: "s"
+  type: "HDF5Data"
+  top: "s"
+  top: "labels_s"
+  hdf5_data_param {
+    source: "./models/DAN/jointGazeNet/source.txt"
+    batch_size: 200
+  }
+  include: { phase: TRAIN }
+}
+
+layer {
+  name: "tl"
+  type: "HDF5Data"
+  top: "tl"
+  top: "labels_tl"
+  hdf5_data_param {
+    source: "./models/DAN/jointGazeNet/target_labels.txt"
+    batch_size: 50
+  }
+  include: { phase: TRAIN }
+}
+
+layer {
+  name: "tnl"
+  type: "HDF5Data"
+  top: "tnl"
+  top: "labels_tnl"
+  hdf5_data_param {
+    source: "./models/DAN/jointGazeNet/target_nolabels.txt"
+    batch_size: 150
+  }
+  include: { phase: TRAIN }
+}
+
+layer {
+  name: "target_label_silence"
+  type: "Silence"
+  bottom: "labels_tnl"
+  include: { phase: TRAIN}
+}
+
+layer {
+  name: "concat_data"
+  type: "Concat"
+  bottom: "s"
+  bottom: "tl"
+  bottom: "tnl"	
+  top: "data"
+  concat_param {
+    concat_dim: 0
+  }
+  include: { phase: TRAIN }
+}
+
+layer {
+  name: "target_test"
+  type: "HDF5Data"
+  top: "data"
+  top: "labels"
+  hdf5_data_param {
+    source: "./models/DAN/jointGazeNet/test_list_transfer.txt"
+    batch_size: 100
+  }
+  include: { phase: TEST }
+}
+
+########################## Network Start  ##########################
+# input - data (TRAIN and TEST)
+# ouput - ip1 (TRAIN and TEST)
+###################################################################
+layer {
+  name: "conv1"
+  type: "Convolution"
+  bottom: "data"
+  top: "conv1"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  convolution_param {
+    num_output: 20
+    kernel_size: 5
+    stride: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.1
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {
+  name: "pool1"
+  type: "Pooling"
+  bottom: "conv1"
+  top: "pool1"
+  pooling_param {
+    pool: MAX
+    kernel_size: 2
+    stride: 2
+  }
+}
+
+layer {
+  name: "conv2"
+  type: "Convolution"
+  bottom: "pool1"
+  top: "conv2"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  convolution_param {
+    num_output: 50
+    kernel_size: 5
+    stride: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "pool2"
+  type: "Pooling"
+  bottom: "conv2"
+  top: "pool2"
+  pooling_param {
+    pool: MAX
+    kernel_size: 2
+    stride: 2
+  }
+}
+layer {
+  name: "ip1"
+  type: "InnerProduct"
+  bottom: "pool2"
+  top: "ip1"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 500
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "relu1"
+  type: "ReLU"
+  bottom: "ip1"
+  top: "ip1"
+}
+########################## Network end  ########################## 
+
+layer {
+  name: "slice_features_fc7"
+  type: "Slice"
+  bottom: "ip1"
+  top: "s_fc7"
+  top: "tl_fc7"
+  top: "tnl_fc7"
+  slice_param {
+    axis: 0
+    slice_point:200
+    slice_point:250
+  }
+  include: { phase: TRAIN }
+}
+
+layer {
+  name: "fc7_alias"
+  type: "Split"
+  bottom: "ip1"
+  top: "t_fc7"
+  include: { phase: TEST }
+}
+
+layer {
+  name: "concat_target"
+  type: "Concat"
+  bottom: "tl_fc7"
+  bottom: "tnl_fc7"
+  top: "t_fc7"
+  concat_param {
+      axis: 0
+  }
+  include: { phase: TRAIN }
+}
+
+
+########################## Prediction Network1: Source Start  ########################## 
+layer {
+  name: "fc8_source"
+  type: "InnerProduct"
+  bottom: "s_fc7"
+  top: "s_fc8"
+  param {
+    name: "fc8_w"
+    lr_mult: 10
+    decay_mult: 1
+  }
+  param {
+    name: "fc8_b"
+    lr_mult: 20
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 2
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+  include: { phase: TRAIN }
+}
+########################## Prediction Network1: Source End  ########################## 
+
+########################## Prediction Network2: Target Start  ########################## 
+layer {
+  name: "fc8_target"
+  type: "InnerProduct"
+  bottom: "t_fc7"
+  top: "t_fc8"
+  param {
+    lr_mult: 10
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 20
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 2
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+
+########################## Prediction Network2: Target End  ########################## 
+layer {
+  name: "slice_features_target_fc8"
+  type: "Slice"
+  bottom: "t_fc8"
+  top: "tl_fc8"
+  top: "tnl_fc8"
+  slice_param {
+    axis: 0
+    slice_point:50
+  }
+  include: { phase: TRAIN }
+}
+
+layer {
+  name: "loss_regression_s"
+  type: "EuclideanGazeLoss"
+  bottom: "s_fc8"
+  bottom: "labels_s"
+  top: "loss"
+  include: { phase: TRAIN}
+}
+
+layer {
+  name: "loss_regression_tl"
+  type: "EuclideanGazeLoss"
+  bottom: "tl_fc8"
+  bottom: "labels_tl"
+  top: "loss"
+  include: { phase: TRAIN}	
+}
+
+layer {
+  name: "mmd_loss_fc7"
+  type: "MMDLoss"
+  bottom: "s_fc7"
+  bottom: "t_fc7"
+  top: "fc7_mmd_loss"
+  loss_weight: 0.00000001
+  mmd_param {
+    kernel_num: 5
+    kernel_mul: 2.0
+    fix_gamma: false
+  }
+  include: { phase: TRAIN }
+}
+
+layer {
+  name: "mmd_loss_fc8"
+  type: "MMDLoss"
+  bottom: "s_fc8"
+  bottom: "t_fc8"
+  top: "fc8_mmd_loss"
+  loss_weight: 0.01
+  mmd_param {
+    kernel_num: 2
+    kernel_mul: 2.0
+    fix_gamma: false
+  }
+  include: { phase: TRAIN }
+}
+
+layer {
+  name: "accuracy"
+  type: "AccuracyGaze"
+  bottom: "s_fc8"
+  bottom: "labels"
+  top: "accuracy"
+  include: { phase: TEST }
+}
