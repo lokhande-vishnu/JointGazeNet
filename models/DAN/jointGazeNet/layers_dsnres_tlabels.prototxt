@@ -1,25 +1,36 @@
 name: "JointGazeNet"
 layer {
-  name: "source_data"
+  name: "s"
   type: "HDF5Data"
   top: "source_data"
   top: "lp_labels"
   hdf5_data_param {
-    source: "./models/DAN/jointGazeNet/train_list.txt"
+    source: "./models/DAN/jointGazeNet/source.txt"
     batch_size: 200
   }
   include: { phase: TRAIN }
 }
 
+layer {
+  name: "tl"
+  type: "HDF5Data"
+  top: "target_data_wlabels"
+  top: "target_labels_wlabels"
+  hdf5_data_param {
+    source: "./models/DAN/jointGazeNet/target_labels.txt"
+    batch_size: 50 # change here if changing dataset size
+  }
+  include: { phase: TRAIN }
+}
 
 layer {
-  name: "target_data"
+  name: "tnl"
   type: "HDF5Data"
-  top: "target_data"
-  top: "target_label"
+  top: "target_data_nlabels"
+  top: "target_labels_nlabels"
   hdf5_data_param {
-    source: "./models/DAN/jointGazeNet/test_list.txt"
-    batch_size: 200
+    source: "./models/DAN/jointGazeNet/target_nolabels.txt"
+    batch_size: 200 # change here if changing dataset size
   }
   include: { phase: TRAIN }
 }
@@ -27,12 +38,38 @@ layer {
 layer {
   name: "target_label_silence"
   type: "Silence"
-  bottom: "target_label"
+  bottom: "target_labels_nlabels"
   include: { phase: TRAIN}
 }
 
 layer {
-  name: "target_data"
+  name: "concat_data"
+  type: "Concat"
+  bottom: "source_data"
+  bottom: "target_data_wlabels"
+  bottom: "target_data_nlabels"	
+  top: "data"
+  concat_param {
+    concat_dim: 0
+  }
+  include: { phase: TRAIN }
+}
+
+layer {
+  name: "concat_target_data"
+  type: "Concat"
+  bottom: "target_data_wlabels"
+  bottom: "target_data_nlabels"
+  top: "target_data"
+  concat_param {
+    concat_dim: 0
+  }
+  include: { phase: TRAIN }
+}
+
+
+layer {
+  name: "target_test"
   type: "HDF5Data"
   top: "data"
   top: "lp_labels"
@@ -43,6 +80,13 @@ layer {
   include: { phase: TEST }
 }
 
+layer {
+  name: "target_data_rename"
+  type: "Split"
+  bottom: "data"
+  top: "target_data"
+  include: { phase: TEST }
+}
 
 ######################## Private source encoder -- start ###########################
 layer {
@@ -179,8 +223,8 @@ layer {
       type: "constant"
     }
   }
-  include: { phase: TRAIN }
 }
+
 layer {
   name: "pv_target_pool1"
   type: "Pooling"
@@ -191,7 +235,6 @@ layer {
     kernel_size: 2
     stride: 2
   }
-  include: { phase: TRAIN }
 }
 
 layer {
@@ -217,7 +260,6 @@ layer {
       type: "constant"
     }
   }
-  include: { phase: TRAIN }
 }
 
 layer {
@@ -230,7 +272,6 @@ layer {
     kernel_size: 2
     stride: 2
   }
-  include: { phase: TRAIN }
 }
 
 layer {
@@ -253,7 +294,6 @@ layer {
       type: "constant"
     }
   }
-  include: { phase: TRAIN }
 }
 
 layer {
@@ -261,23 +301,13 @@ layer {
   type: "ReLU"
   bottom: "pv_target_ip1"
   top: "pv_target_features"
-  include: { phase: TRAIN }
 }
 ######################## Private target encoder -- end ###########################
 
-######################## Shared encoder -- start ###########################
-layer {
-  name: "concat_data"
-  type: "Concat"
-  bottom: "source_data"
-  bottom: "target_data"
-  top: "data"
-  concat_param {
-    concat_dim: 0
-  }
-  include: { phase: TRAIN }
-}
-
+########################## Shared encoder -- Start  ##########################
+# input - data (TRAIN and TEST)
+# ouput - ip1 (TRAIN and TEST)
+###################################################################
 layer {
   name: "conv1"
   type: "Convolution"
@@ -350,7 +380,6 @@ layer {
     stride: 2
   }
 }
-
 layer {
   name: "ip1"
   type: "InnerProduct"
@@ -379,87 +408,55 @@ layer {
   bottom: "ip1"
   top: "ip1"
 }
-
-######################## Shared encoder -- end ###########################
-
-
-layer {
-  name: "fc7_alias"
-  type: "Split"
-  bottom: "ip1"
-  top: "source_features_fc7"
-  include: { phase: TEST }
-}
+########################## Shared encoder -- end  ########################## 
 
 layer {
   name: "slice_features_fc7"
   type: "Slice"
   bottom: "ip1"
-  top: "source_features_fc7"
-  top: "target_features_fc7"
+  top: "s_fc7"
+  top: "tl_fc7"
+  top: "tnl_fc7"
   slice_param {
-    slice_dim: 0
+    axis: 0
+    slice_point:200 # change here if changing dataset size
+    slice_point:250 # change here if changing dataset size
   }
   include: { phase: TRAIN }
 }
 
 layer {
-  name: "fc8_source"
-  type: "InnerProduct"
-  bottom: "source_features_fc7"
-  top: "source_features_fc8"
-  param {
-    name: "fc8_w"
-    lr_mult: 10
-    decay_mult: 1
-  }
-  param {
-    name: "fc8_b"
-    lr_mult: 20
-    decay_mult: 0
-  }
-  inner_product_param {
-    num_output: 2
-    weight_filler {
-      type: "gaussian"
-      std: 0.01
-    }
-    bias_filler {
-      type: "constant"
-      value: 0
-    }
-  }
-}
-
-layer {
-  name: "accuracy"
-  type: "AccuracyGaze"
-  bottom: "source_features_fc8"
-  bottom: "lp_labels"
-  top: "accuracy"
+  name: "fc7_alias"
+  type: "Split"
+  bottom: "ip1"
+  top: "t_fc7"
   include: { phase: TEST }
 }
 
 layer {
-  name: "loss"
-  type: "EuclideanGazeLoss"
-  bottom: "source_features_fc8"
-  bottom: "lp_labels"
-  top: "loss"
+  name: "concat_target_fc7"
+  type: "Concat"
+  bottom: "tl_fc7"
+  bottom: "tnl_fc7"
+  top: "t_fc7"
+  concat_param {
+      axis: 0
+  }
+  include: { phase: TRAIN }
 }
 
+
+########################## Prediction Network1: Source Start  ########################## 
 layer {
-  name: "fc8_target"
+  name: "fc8_source"
   type: "InnerProduct"
-  bottom: "target_features_fc7"
-  top: "target_features_fc8"
+  bottom: "s_fc7"
+  top: "s_fc8"
   param {
-    name: "fc8_w"
     lr_mult: 10
     decay_mult: 1
   }
   param {
-    name: "fc8_b"
     lr_mult: 20
     decay_mult: 0
   }
@@ -475,13 +472,73 @@ layer {
     }
   }
   include: { phase: TRAIN }
+}
+########################## Prediction Network1: Source End  ########################## 
+
+########################## Prediction Network2: Target Start  ########################## 
+layer {
+  name: "fc8_target"
+  type: "InnerProduct"
+  bottom: "t_fc7"
+  top: "t_fc8"
+  param {
+    lr_mult: 10
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 20
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 2
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+
+########################## Prediction Network2: Target End  ########################## 
+layer {
+  name: "slice_features_target_fc8"
+  type: "Slice"
+  bottom: "t_fc8"
+  top: "tl_fc8"
+  top: "tnl_fc8"
+  slice_param {
+    axis: 0
+    slice_point:50  # change here if changing dataset size
+  }
+  include: { phase: TRAIN }
+}
+
+layer {
+  name: "loss_regression_s"
+  type: "EuclideanGazeLoss"
+  bottom: "s_fc8"
+  bottom: "lp_labels"
+  top: "loss_s"
+  include: { phase: TRAIN}
+}
+
+layer {
+  name: "loss_regression_tl"
+  type: "EuclideanGazeLoss"
+  bottom: "tl_fc8"
+  bottom: "target_labels_wlabels"
+  top: "loss_tl"
+  include: { phase: TRAIN}	
 }
 
 layer {
   name: "mmd_loss_fc7"
   type: "MMDLoss"
-  bottom: "source_features_fc7"
-  bottom: "target_features_fc7"
+  bottom: "s_fc7"
+  bottom: "t_fc7"
   top: "fc7_mmd_loss"
   loss_weight: 0.00000001
   mmd_param {
@@ -495,8 +552,8 @@ layer {
 layer {
   name: "mmd_loss_fc8"
   type: "MMDLoss"
-  bottom: "source_features_fc8"
-  bottom: "target_features_fc8"
+  bottom: "s_fc8"
+  bottom: "t_fc8"
   top: "fc8_mmd_loss"
   loss_weight: 0.01
   mmd_param {
@@ -510,7 +567,7 @@ layer {
 layer {
   name: "diff_loss_source"
   type: "DiffLoss"
-  bottom: "source_features_fc7"
+  bottom: "s_fc7"
   bottom: "pv_source_features"
   top: "diff_loss_source"
   loss_weight: 0.01
@@ -520,46 +577,54 @@ layer {
 layer {
   name: "diff_loss_target"
   type: "DiffLoss"
-  bottom: "target_features_fc7"
+  bottom: "t_fc7"
   bottom: "pv_target_features"
   top: "diff_loss_target"
   loss_weight: 0.01
   include: { phase: TRAIN }
 }
 
+layer {
+  name: "slice_features_target_fc8"
+  type: "Slice"
+  bottom: "pv_target_features"
+  top: "pv_target_features_wlabels"
+  top: "pv_target_features_nlabels"
+  slice_param {
+    axis: 0
+    slice_point:50  # change here if changing dataset size
+  }
+  include: { phase: TRAIN }
+}
+
+layer {
+  name: "pv_target_features_rename"
+  type: "Split"
+  bottom: "pv_target_features"
+  top: "pv_target_features_wlabels"
+  include: { phase: TEST }
+}
 
 ######################## Residual start ###########################
 
 layer {
-  name: "slice_features_fc7"
-  type: "Slice"
-  bottom: "source_features_fc7"
-  top: "target_unlabelledfeatures_fc7"
-  top: "target_labelledfeatures_fc7"
-  slice_param {
-    axis: 0
-    slice_point:22500
-  }
-}
-
-
-layer {
   name: "res_desired"
   type: "Eltwise"		
-  bottom: "target_labels_common_pred"
-  bottom: "target_labels_common_actual"
+  bottom: "tl_fc8"
+  bottom: "target_labels_wlabels"
   top: "res_desired"
   eltwise_param {
   	operation: SUM
 	coeff: 1
 	coeff: -1
   }
+  include: { phase: TRAIN }
 }
 
 layer {
   name: "res_prediction"
   type: "InnerProduct"
-  bottom: "target_labelledfeatures_fc7"
+  bottom: "pv_target_features_wlabels"
   top: "res_prediction"
   param {
     lr_mult: 10
@@ -588,16 +653,30 @@ layer {
   bottom: "res_prediction"
   bottom: "res_desired"
   top: "res_loss"
+  include: { phase: TRAIN }	
 }
 
 layer {
-  name: "res_accuracy"
-  type: "Accuracy"
+  name: "target_label_prediction"
+  type: "Eltwise"		
+  bottom: "t_fc8"
   bottom: "res_prediction"
-  bottom: "res_desired"
-  top: "res_accuracy"
+  top: "target_label_prediction"
+  eltwise_param {
+  	operation: SUM
+	coeff: 1
+	coeff: -1
+  }
+  include: { phase: TEST }
+}
+######################## Residual end ###########################
+
+layer {
+  name: "accuracy"
+  type: "AccuracyGaze"
+  bottom: "target_label_prediction"
+  bottom: "lp_labels"
+  top: "accuracy"
   include: { phase: TEST }
 }
 
-
-######################## Residual end ###########################
