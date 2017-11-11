@@ -256,7 +256,7 @@ layer {
   bottom: "source_features_fc7"
   bottom: "target_features_fc7"
   top: "fc7_mmd_loss"
-  loss_weight: 0.0001
+  loss_weight: 0.00000001
   mmd_param {
     kernel_num: 5
     kernel_mul: 2.0
