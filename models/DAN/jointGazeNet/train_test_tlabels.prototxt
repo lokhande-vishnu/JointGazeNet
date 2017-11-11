@@ -2,8 +2,8 @@ name: "JointGazeNet"
 layer {
   name: "s"
   type: "HDF5Data"
-  top: "s"
-  top: "labels_s"
+  top: "source_data"
+  top: "lp_labels"
   hdf5_data_param {
     source: "./models/DAN/jointGazeNet/source.txt"
     batch_size: 200
@@ -14,11 +14,11 @@ layer {
 layer {
   name: "tl"
   type: "HDF5Data"
-  top: "tl"
-  top: "labels_tl"
+  top: "target_data_wlabels"
+  top: "target_labels_wlabels"
   hdf5_data_param {
     source: "./models/DAN/jointGazeNet/target_labels.txt"
-    batch_size: 50
+    batch_size: 50 # change here if changing dataset size
   }
   include: { phase: TRAIN }
 }
@@ -26,11 +26,11 @@ layer {
 layer {
   name: "tnl"
   type: "HDF5Data"
-  top: "tnl"
-  top: "labels_tnl"
+  top: "target_data_nlabels"
+  top: "target_labels_nlabels"
   hdf5_data_param {
     source: "./models/DAN/jointGazeNet/target_nolabels.txt"
-    batch_size: 150
+    batch_size: 200 # change here if changing dataset size
   }
   include: { phase: TRAIN }
 }
@@ -38,16 +38,16 @@ layer {
 layer {
   name: "target_label_silence"
   type: "Silence"
-  bottom: "labels_tnl"
+  bottom: "target_labels_nlabels"
   include: { phase: TRAIN}
 }
 
 layer {
   name: "concat_data"
   type: "Concat"
-  bottom: "s"
-  bottom: "tl"
-  bottom: "tnl"	
+  bottom: "source_data"
+  bottom: "target_data_wlabels"
+  bottom: "target_data_nlabels"	
   top: "data"
   concat_param {
     concat_dim: 0
@@ -59,7 +59,7 @@ layer {
   name: "target_test"
   type: "HDF5Data"
   top: "data"
-  top: "labels"
+  top: "lp_labels"
   hdf5_data_param {
     source: "./models/DAN/jointGazeNet/test_list_transfer.txt"
     batch_size: 100
@@ -182,8 +182,8 @@ layer {
   top: "tnl_fc7"
   slice_param {
     axis: 0
-    slice_point:200
-    slice_point:250
+    slice_point:200 # change here if changing dataset size
+    slice_point:250 # change here if changing dataset size
   }
   include: { phase: TRAIN }
 }
@@ -216,12 +216,10 @@ layer {
   bottom: "s_fc7"
   top: "s_fc8"
   param {
-    name: "fc8_w"
     lr_mult: 10
     decay_mult: 1
   }
   param {
-    name: "fc8_b"
     lr_mult: 20
     decay_mult: 0
   }
@@ -276,7 +274,7 @@ layer {
   top: "tnl_fc8"
   slice_param {
     axis: 0
-    slice_point:50
+    slice_point:50  # change here if changing dataset size
   }
   include: { phase: TRAIN }
 }
@@ -285,8 +283,8 @@ layer {
   name: "loss_regression_s"
   type: "EuclideanGazeLoss"
   bottom: "s_fc8"
-  bottom: "labels_s"
-  top: "loss"
+  bottom: "lp_labels"
+  top: "loss_s"
   include: { phase: TRAIN}
 }
 
@@ -294,8 +292,8 @@ layer {
   name: "loss_regression_tl"
   type: "EuclideanGazeLoss"
   bottom: "tl_fc8"
-  bottom: "labels_tl"
-  top: "loss"
+  bottom: "target_labels_wlabels"
+  top: "loss_tl"
   include: { phase: TRAIN}	
 }
 
@@ -332,8 +330,9 @@ layer {
 layer {
   name: "accuracy"
   type: "AccuracyGaze"
-  bottom: "s_fc8"
-  bottom: "labels"
+  bottom: "t_fc8"
+  bottom: "lp_labels"
   top: "accuracy"
   include: { phase: TEST }
 }
+
