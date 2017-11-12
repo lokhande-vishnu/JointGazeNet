@@ -1,0 +1,1723 @@
+I1112 00:52:27.053710  6519 caffe.cpp:218] Using GPUs 2
+I1112 00:52:27.272209  6519 caffe.cpp:223] GPU 2: GeForce GTX 1080 Ti
+I1112 00:52:28.605806  6519 solver.cpp:44] Initializing solver from parameters: 
+test_iter: 100
+test_interval: 100
+base_lr: 0.001
+max_iter: 10000
+lr_policy: "inv"
+gamma: 0.001
+power: 0.75
+momentum: 0.9
+snapshot: 1000
+snapshot_prefix: "./models/DAN/jointGazeNet/trained_model"
+solver_mode: GPU
+device_id: 2
+net: "./models/DAN/jointGazeNet/layers_dsnres_alltlabels.prototxt"
+train_state {
+  level: 0
+  stage: ""
+}
+snapshot_after_train: false
+I1112 00:52:28.606218  6519 solver.cpp:87] Creating training net from net file: ./models/DAN/jointGazeNet/layers_dsnres_alltlabels.prototxt
+I1112 00:52:28.606926  6519 net.cpp:294] The NetState phase (0) differed from the phase (1) specified by a rule in layer target_test
+I1112 00:52:28.606961  6519 net.cpp:294] The NetState phase (0) differed from the phase (1) specified by a rule in layer target_data_rename
+I1112 00:52:28.606990  6519 net.cpp:294] The NetState phase (0) differed from the phase (1) specified by a rule in layer fc7_alias
+I1112 00:52:28.607010  6519 net.cpp:294] The NetState phase (0) differed from the phase (1) specified by a rule in layer pv_target_features_rename
+I1112 00:52:28.607023  6519 net.cpp:294] The NetState phase (0) differed from the phase (1) specified by a rule in layer target_label_prediction
+I1112 00:52:28.607038  6519 net.cpp:294] The NetState phase (0) differed from the phase (1) specified by a rule in layer accuracy
+I1112 00:52:28.607395  6519 net.cpp:51] Initializing net from parameters: 
+name: "JointGazeNet"
+state {
+  phase: TRAIN
+  level: 0
+  stage: ""
+}
+layer {
+  name: "s"
+  type: "HDF5Data"
+  top: "source_data"
+  top: "lp_labels"
+  include {
+    phase: TRAIN
+  }
+  hdf5_data_param {
+    source: "./models/DAN/jointGazeNet/source.txt"
+    batch_size: 200
+  }
+}
+layer {
+  name: "tl"
+  type: "HDF5Data"
+  top: "target_data_wlabels"
+  top: "target_labels_wlabels"
+  include {
+    phase: TRAIN
+  }
+  hdf5_data_param {
+    source: "./models/DAN/jointGazeNet/target_labels_all.txt"
+    batch_size: 200
+  }
+}
+layer {
+  name: "concat_data"
+  type: "Concat"
+  bottom: "source_data"
+  bottom: "target_data_wlabels"
+  top: "data"
+  include {
+    phase: TRAIN
+  }
+  concat_param {
+    concat_dim: 0
+  }
+}
+layer {
+  name: "split_target_data"
+  type: "Split"
+  bottom: "target_data_wlabels"
+  top: "target_data"
+  include {
+    phase: TRAIN
+  }
+  concat_param {
+    concat_dim: 0
+  }
+}
+layer {
+  name: "pv_source_conv1"
+  type: "Convolution"
+  bottom: "source_data"
+  top: "pv_source_conv1"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  include {
+    phase: TRAIN
+  }
+  convolution_param {
+    num_output: 20
+    kernel_size: 5
+    stride: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.1
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {
+  name: "pv_source_pool1"
+  type: "Pooling"
+  bottom: "pv_source_conv1"
+  top: "pv_source_pool1"
+  include {
+    phase: TRAIN
+  }
+  pooling_param {
+    pool: MAX
+    kernel_size: 2
+    stride: 2
+  }
+}
+layer {
+  name: "pv_source_conv2"
+  type: "Convolution"
+  bottom: "pv_source_pool1"
+  top: "pv_source_conv2"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  include {
+    phase: TRAIN
+  }
+  convolution_param {
+    num_output: 50
+    kernel_size: 5
+    stride: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {
+  name: "pv_source_pool2"
+  type: "Pooling"
+  bottom: "pv_source_conv2"
+  top: "pv_source_pool2"
+  include {
+    phase: TRAIN
+  }
+  pooling_param {
+    pool: MAX
+    kernel_size: 2
+    stride: 2
+  }
+}
+layer {
+  name: "pv_source_ip1"
+  type: "InnerProduct"
+  bottom: "pv_source_pool2"
+  top: "pv_source_ip1"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  include {
+    phase: TRAIN
+  }
+  inner_product_param {
+    num_output: 500
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {
+  name: "relu1"
+  type: "ReLU"
+  bottom: "pv_source_ip1"
+  top: "pv_source_features"
+  include {
+    phase: TRAIN
+  }
+}
+layer {
+  name: "pv_target_conv1"
+  type: "Convolution"
+  bottom: "target_data"
+  top: "pv_target_conv1"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  convolution_param {
+    num_output: 20
+    kernel_size: 5
+    stride: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.1
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {
+  name: "pv_target_pool1"
+  type: "Pooling"
+  bottom: "pv_target_conv1"
+  top: "pv_target_pool1"
+  pooling_param {
+    pool: MAX
+    kernel_size: 2
+    stride: 2
+  }
+}
+layer {
+  name: "pv_target_conv2"
+  type: "Convolution"
+  bottom: "pv_target_pool1"
+  top: "pv_target_conv2"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  convolution_param {
+    num_output: 50
+    kernel_size: 5
+    stride: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {
+  name: "pv_target_pool2"
+  type: "Pooling"
+  bottom: "pv_target_conv2"
+  top: "pv_target_pool2"
+  pooling_param {
+    pool: MAX
+    kernel_size: 2
+    stride: 2
+  }
+}
+layer {
+  name: "pv_target_ip1"
+  type: "InnerProduct"
+  bottom: "pv_target_pool2"
+  top: "pv_target_ip1"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 500
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {
+  name: "pv_target_relu1"
+  type: "ReLU"
+  bottom: "pv_target_ip1"
+  top: "pv_target_features"
+}
+layer {
+  name: "conv1"
+  type: "Convolution"
+  bottom: "data"
+  top: "conv1"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  convolution_param {
+    num_output: 20
+    kernel_size: 5
+    stride: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.1
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {
+  name: "pool1"
+  type: "Pooling"
+  bottom: "conv1"
+  top: "pool1"
+  pooling_param {
+    pool: MAX
+    kernel_size: 2
+    stride: 2
+  }
+}
+layer {
+  name: "conv2"
+  type: "Convolution"
+  bottom: "pool1"
+  top: "conv2"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  convolution_param {
+    num_output: 50
+    kernel_size: 5
+    stride: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {
+  name: "pool2"
+  type: "Pooling"
+  bottom: "conv2"
+  top: "pool2"
+  pooling_param {
+    pool: MAX
+    kernel_size: 2
+    stride: 2
+  }
+}
+layer {
+  name: "ip1"
+  type: "InnerProduct"
+  bottom: "pool2"
+  top: "ip1"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 500
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {
+  name: "relu1"
+  type: "ReLU"
+  bottom: "ip1"
+  top: "ip1"
+}
+layer {
+  name: "slice_features_fc7"
+  type: "Slice"
+  bottom: "ip1"
+  top: "s_fc7"
+  top: "tl_fc7"
+  include {
+    phase: TRAIN
+  }
+  slice_param {
+    slice_point: 200
+    axis: 0
+  }
+}
+layer {
+  name: "split_target_fc7"
+  type: "Split"
+  bottom: "tl_fc7"
+  top: "t_fc7"
+  include {
+    phase: TRAIN
+  }
+  concat_param {
+    axis: 0
+  }
+}
+layer {
+  name: "fc8_source"
+  type: "InnerProduct"
+  bottom: "s_fc7"
+  top: "s_fc8"
+  param {
+    lr_mult: 10
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 20
+    decay_mult: 0
+  }
+  include {
+    phase: TRAIN
+  }
+  inner_product_param {
+    num_output: 2
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+layer {
+  name: "fc8_target"
+  type: "InnerProduct"
+  bottom: "t_fc7"
+  top: "t_fc8"
+  param {
+    lr_mult: 10
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 20
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 2
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+layer {
+  name: "split_features_target_fc8"
+  type: "Split"
+  bottom: "t_fc8"
+  top: "tl_fc8"
+  include {
+    phase: TRAIN
+  }
+}
+layer {
+  name: "loss_regression_s"
+  type: "EuclideanGazeLoss"
+  bottom: "s_fc8"
+  bottom: "lp_labels"
+  top: "loss_s"
+  include {
+    phase: TRAIN
+  }
+}
+layer {
+  name: "loss_regression_tl"
+  type: "EuclideanGazeLoss"
+  bottom: "tl_fc8"
+  bottom: "target_labels_wlabels"
+  top: "loss_tl"
+  include {
+    phase: TRAIN
+  }
+}
+layer {
+  name: "mmd_loss_fc7"
+  type: "MMDLoss"
+  bottom: "s_fc7"
+  bottom: "t_fc7"
+  top: "fc7_mmd_loss"
+  loss_weight: 1e-05
+  include {
+    phase: TRAIN
+  }
+  mmd_param {
+    kernel_num: 5
+    kernel_mul: 2
+    fix_gamma: false
+  }
+}
+layer {
+  name: "mmd_loss_fc8"
+  type: "MMDLoss"
+  bottom: "s_fc8"
+  bottom: "t_fc8"
+  top: "fc8_mmd_loss"
+  loss_weight: 0.01
+  include {
+    phase: TRAIN
+  }
+  mmd_param {
+    kernel_num: 2
+    kernel_mul: 2
+    fix_gamma: false
+  }
+}
+layer {
+  name: "diff_loss_source"
+  type: "DiffLoss"
+  bottom: "s_fc7"
+  bottom: "pv_source_features"
+  top: "diff_loss_source"
+  loss_weight: 0.01
+  include {
+    phase: TRAIN
+  }
+}
+layer {
+  name: "diff_loss_target"
+  type: "DiffLoss"
+  bottom: "t_fc7"
+  bottom: "pv_target_features"
+  top: "diff_loss_target"
+  loss_weight: 0.01
+  include {
+    phase: TRAIN
+  }
+}
+layer {
+  name: "split_features_target_fc8"
+  type: "Split"
+  bottom: "pv_target_features"
+  top: "pv_target_features_wlabels"
+  include {
+    phase: TRAIN
+  }
+}
+layer {
+  name: "res_desired"
+  type: "Eltwise"
+  bottom: "tl_fc8"
+  bottom: "target_labels_wlabels"
+  top: "res_desired"
+  include {
+    phase: TRAIN
+  }
+  eltwise_param {
+    operation: SUM
+    coeff: 1
+    coeff: -1
+  }
+}
+layer {
+  name: "res_prediction"
+  type: "InnerProduct"
+  bottom: "pv_target_features_wlabels"
+  top: "res_prediction"
+  param {
+    lr_mult: 10
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 20
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 2
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+layer {
+  name: "res_loss"
+  type: "EuclideanLoss"
+  bottom: "res_prediction"
+  bottom: "res_desired"
+  top: "res_loss"
+  include {
+    phase: TRAIN
+  }
+}
+I1112 00:52:28.608016  6519 layer_factory.hpp:77] Creating layer s
+I1112 00:52:28.608048  6519 net.cpp:84] Creating Layer s
+I1112 00:52:28.608067  6519 net.cpp:380] s -> source_data
+I1112 00:52:28.608103  6519 net.cpp:380] s -> lp_labels
+I1112 00:52:28.608124  6519 hdf5_data_layer.cpp:80] Loading list of HDF5 filenames from: ./models/DAN/jointGazeNet/source.txt
+I1112 00:52:28.608184  6519 hdf5_data_layer.cpp:94] Number of HDF5 files: 1
+I1112 00:52:28.609712  6519 hdf5.cpp:32] Datatype class: H5T_FLOAT
+I1112 00:52:29.105387  6519 net.cpp:122] Setting up s
+I1112 00:52:29.105458  6519 net.cpp:129] Top shape: 200 1 36 60 (432000)
+I1112 00:52:29.105464  6519 net.cpp:129] Top shape: 200 2 (400)
+I1112 00:52:29.105469  6519 net.cpp:137] Memory required for data: 1729600
+I1112 00:52:29.105480  6519 layer_factory.hpp:77] Creating layer source_data_s_0_split
+I1112 00:52:29.105515  6519 net.cpp:84] Creating Layer source_data_s_0_split
+I1112 00:52:29.105531  6519 net.cpp:406] source_data_s_0_split <- source_data
+I1112 00:52:29.105566  6519 net.cpp:380] source_data_s_0_split -> source_data_s_0_split_0
+I1112 00:52:29.105585  6519 net.cpp:380] source_data_s_0_split -> source_data_s_0_split_1
+I1112 00:52:29.105624  6519 net.cpp:122] Setting up source_data_s_0_split
+I1112 00:52:29.105631  6519 net.cpp:129] Top shape: 200 1 36 60 (432000)
+I1112 00:52:29.105638  6519 net.cpp:129] Top shape: 200 1 36 60 (432000)
+I1112 00:52:29.105640  6519 net.cpp:137] Memory required for data: 5185600
+I1112 00:52:29.105644  6519 layer_factory.hpp:77] Creating layer tl
+I1112 00:52:29.105661  6519 net.cpp:84] Creating Layer tl
+I1112 00:52:29.105669  6519 net.cpp:380] tl -> target_data_wlabels
+I1112 00:52:29.105680  6519 net.cpp:380] tl -> target_labels_wlabels
+I1112 00:52:29.105689  6519 hdf5_data_layer.cpp:80] Loading list of HDF5 filenames from: ./models/DAN/jointGazeNet/target_labels_all.txt
+I1112 00:52:29.105736  6519 hdf5_data_layer.cpp:94] Number of HDF5 files: 1
+I1112 00:52:29.319417  6519 net.cpp:122] Setting up tl
+I1112 00:52:29.319448  6519 net.cpp:129] Top shape: 200 1 36 60 (432000)
+I1112 00:52:29.319453  6519 net.cpp:129] Top shape: 200 2 (400)
+I1112 00:52:29.319488  6519 net.cpp:137] Memory required for data: 6915200
+I1112 00:52:29.319497  6519 layer_factory.hpp:77] Creating layer target_data_wlabels_tl_0_split
+I1112 00:52:29.319509  6519 net.cpp:84] Creating Layer target_data_wlabels_tl_0_split
+I1112 00:52:29.319515  6519 net.cpp:406] target_data_wlabels_tl_0_split <- target_data_wlabels
+I1112 00:52:29.319526  6519 net.cpp:380] target_data_wlabels_tl_0_split -> target_data_wlabels_tl_0_split_0
+I1112 00:52:29.319540  6519 net.cpp:380] target_data_wlabels_tl_0_split -> target_data_wlabels_tl_0_split_1
+I1112 00:52:29.319571  6519 net.cpp:122] Setting up target_data_wlabels_tl_0_split
+I1112 00:52:29.319576  6519 net.cpp:129] Top shape: 200 1 36 60 (432000)
+I1112 00:52:29.319581  6519 net.cpp:129] Top shape: 200 1 36 60 (432000)
+I1112 00:52:29.319586  6519 net.cpp:137] Memory required for data: 10371200
+I1112 00:52:29.319588  6519 layer_factory.hpp:77] Creating layer target_labels_wlabels_tl_1_split
+I1112 00:52:29.319597  6519 net.cpp:84] Creating Layer target_labels_wlabels_tl_1_split
+I1112 00:52:29.319600  6519 net.cpp:406] target_labels_wlabels_tl_1_split <- target_labels_wlabels
+I1112 00:52:29.319607  6519 net.cpp:380] target_labels_wlabels_tl_1_split -> target_labels_wlabels_tl_1_split_0
+I1112 00:52:29.319617  6519 net.cpp:380] target_labels_wlabels_tl_1_split -> target_labels_wlabels_tl_1_split_1
+I1112 00:52:29.319640  6519 net.cpp:122] Setting up target_labels_wlabels_tl_1_split
+I1112 00:52:29.319645  6519 net.cpp:129] Top shape: 200 2 (400)
+I1112 00:52:29.319650  6519 net.cpp:129] Top shape: 200 2 (400)
+I1112 00:52:29.319653  6519 net.cpp:137] Memory required for data: 10374400
+I1112 00:52:29.319658  6519 layer_factory.hpp:77] Creating layer concat_data
+I1112 00:52:29.319665  6519 net.cpp:84] Creating Layer concat_data
+I1112 00:52:29.319669  6519 net.cpp:406] concat_data <- source_data_s_0_split_0
+I1112 00:52:29.319674  6519 net.cpp:406] concat_data <- target_data_wlabels_tl_0_split_0
+I1112 00:52:29.319679  6519 net.cpp:380] concat_data -> data
+I1112 00:52:29.319701  6519 net.cpp:122] Setting up concat_data
+I1112 00:52:29.319715  6519 net.cpp:129] Top shape: 400 1 36 60 (864000)
+I1112 00:52:29.319718  6519 net.cpp:137] Memory required for data: 13830400
+I1112 00:52:29.319722  6519 layer_factory.hpp:77] Creating layer split_target_data
+I1112 00:52:29.319728  6519 net.cpp:84] Creating Layer split_target_data
+I1112 00:52:29.319735  6519 net.cpp:406] split_target_data <- target_data_wlabels_tl_0_split_1
+I1112 00:52:29.319741  6519 net.cpp:380] split_target_data -> target_data
+I1112 00:52:29.319759  6519 net.cpp:122] Setting up split_target_data
+I1112 00:52:29.319766  6519 net.cpp:129] Top shape: 200 1 36 60 (432000)
+I1112 00:52:29.319770  6519 net.cpp:137] Memory required for data: 15558400
+I1112 00:52:29.319774  6519 layer_factory.hpp:77] Creating layer pv_source_conv1
+I1112 00:52:29.319793  6519 net.cpp:84] Creating Layer pv_source_conv1
+I1112 00:52:29.319797  6519 net.cpp:406] pv_source_conv1 <- source_data_s_0_split_1
+I1112 00:52:29.319805  6519 net.cpp:380] pv_source_conv1 -> pv_source_conv1
+I1112 00:52:29.336087  6519 net.cpp:122] Setting up pv_source_conv1
+I1112 00:52:29.336171  6519 net.cpp:129] Top shape: 200 20 32 56 (7168000)
+I1112 00:52:29.336187  6519 net.cpp:137] Memory required for data: 44230400
+I1112 00:52:29.336225  6519 layer_factory.hpp:77] Creating layer pv_source_pool1
+I1112 00:52:29.336252  6519 net.cpp:84] Creating Layer pv_source_pool1
+I1112 00:52:29.336266  6519 net.cpp:406] pv_source_pool1 <- pv_source_conv1
+I1112 00:52:29.336283  6519 net.cpp:380] pv_source_pool1 -> pv_source_pool1
+I1112 00:52:29.336405  6519 net.cpp:122] Setting up pv_source_pool1
+I1112 00:52:29.336426  6519 net.cpp:129] Top shape: 200 20 16 28 (1792000)
+I1112 00:52:29.336437  6519 net.cpp:137] Memory required for data: 51398400
+I1112 00:52:29.336447  6519 layer_factory.hpp:77] Creating layer pv_source_conv2
+I1112 00:52:29.336469  6519 net.cpp:84] Creating Layer pv_source_conv2
+I1112 00:52:29.336491  6519 net.cpp:406] pv_source_conv2 <- pv_source_pool1
+I1112 00:52:29.336519  6519 net.cpp:380] pv_source_conv2 -> pv_source_conv2
+I1112 00:52:29.337082  6519 net.cpp:122] Setting up pv_source_conv2
+I1112 00:52:29.337115  6519 net.cpp:129] Top shape: 200 50 12 24 (2880000)
+I1112 00:52:29.337126  6519 net.cpp:137] Memory required for data: 62918400
+I1112 00:52:29.337144  6519 layer_factory.hpp:77] Creating layer pv_source_pool2
+I1112 00:52:29.337162  6519 net.cpp:84] Creating Layer pv_source_pool2
+I1112 00:52:29.337175  6519 net.cpp:406] pv_source_pool2 <- pv_source_conv2
+I1112 00:52:29.337190  6519 net.cpp:380] pv_source_pool2 -> pv_source_pool2
+I1112 00:52:29.337234  6519 net.cpp:122] Setting up pv_source_pool2
+I1112 00:52:29.337251  6519 net.cpp:129] Top shape: 200 50 6 12 (720000)
+I1112 00:52:29.337263  6519 net.cpp:137] Memory required for data: 65798400
+I1112 00:52:29.337273  6519 layer_factory.hpp:77] Creating layer pv_source_ip1
+I1112 00:52:29.337287  6519 net.cpp:84] Creating Layer pv_source_ip1
+I1112 00:52:29.337297  6519 net.cpp:406] pv_source_ip1 <- pv_source_pool2
+I1112 00:52:29.337312  6519 net.cpp:380] pv_source_ip1 -> pv_source_ip1
+I1112 00:52:29.352030  6519 net.cpp:122] Setting up pv_source_ip1
+I1112 00:52:29.352134  6519 net.cpp:129] Top shape: 200 500 (100000)
+I1112 00:52:29.352152  6519 net.cpp:137] Memory required for data: 66198400
+I1112 00:52:29.352185  6519 layer_factory.hpp:77] Creating layer relu1
+I1112 00:52:29.352207  6519 net.cpp:84] Creating Layer relu1
+I1112 00:52:29.352221  6519 net.cpp:406] relu1 <- pv_source_ip1
+I1112 00:52:29.352238  6519 net.cpp:380] relu1 -> pv_source_features
+I1112 00:52:29.352289  6519 net.cpp:122] Setting up relu1
+I1112 00:52:29.352308  6519 net.cpp:129] Top shape: 200 500 (100000)
+I1112 00:52:29.352319  6519 net.cpp:137] Memory required for data: 66598400
+I1112 00:52:29.352330  6519 layer_factory.hpp:77] Creating layer pv_target_conv1
+I1112 00:52:29.352351  6519 net.cpp:84] Creating Layer pv_target_conv1
+I1112 00:52:29.352365  6519 net.cpp:406] pv_target_conv1 <- target_data
+I1112 00:52:29.352382  6519 net.cpp:380] pv_target_conv1 -> pv_target_conv1
+I1112 00:52:29.352620  6519 net.cpp:122] Setting up pv_target_conv1
+I1112 00:52:29.352645  6519 net.cpp:129] Top shape: 200 20 32 56 (7168000)
+I1112 00:52:29.352659  6519 net.cpp:137] Memory required for data: 95270400
+I1112 00:52:29.352674  6519 layer_factory.hpp:77] Creating layer pv_target_pool1
+I1112 00:52:29.352690  6519 net.cpp:84] Creating Layer pv_target_pool1
+I1112 00:52:29.352705  6519 net.cpp:406] pv_target_pool1 <- pv_target_conv1
+I1112 00:52:29.352720  6519 net.cpp:380] pv_target_pool1 -> pv_target_pool1
+I1112 00:52:29.352764  6519 net.cpp:122] Setting up pv_target_pool1
+I1112 00:52:29.352783  6519 net.cpp:129] Top shape: 200 20 16 28 (1792000)
+I1112 00:52:29.352797  6519 net.cpp:137] Memory required for data: 102438400
+I1112 00:52:29.352809  6519 layer_factory.hpp:77] Creating layer pv_target_conv2
+I1112 00:52:29.352828  6519 net.cpp:84] Creating Layer pv_target_conv2
+I1112 00:52:29.352843  6519 net.cpp:406] pv_target_conv2 <- pv_target_pool1
+I1112 00:52:29.352859  6519 net.cpp:380] pv_target_conv2 -> pv_target_conv2
+I1112 00:52:29.353256  6519 net.cpp:122] Setting up pv_target_conv2
+I1112 00:52:29.353267  6519 net.cpp:129] Top shape: 200 50 12 24 (2880000)
+I1112 00:52:29.353271  6519 net.cpp:137] Memory required for data: 113958400
+I1112 00:52:29.353281  6519 layer_factory.hpp:77] Creating layer pv_target_pool2
+I1112 00:52:29.353302  6519 net.cpp:84] Creating Layer pv_target_pool2
+I1112 00:52:29.353307  6519 net.cpp:406] pv_target_pool2 <- pv_target_conv2
+I1112 00:52:29.353313  6519 net.cpp:380] pv_target_pool2 -> pv_target_pool2
+I1112 00:52:29.353348  6519 net.cpp:122] Setting up pv_target_pool2
+I1112 00:52:29.353354  6519 net.cpp:129] Top shape: 200 50 6 12 (720000)
+I1112 00:52:29.353358  6519 net.cpp:137] Memory required for data: 116838400
+I1112 00:52:29.353361  6519 layer_factory.hpp:77] Creating layer pv_target_ip1
+I1112 00:52:29.353371  6519 net.cpp:84] Creating Layer pv_target_ip1
+I1112 00:52:29.353376  6519 net.cpp:406] pv_target_ip1 <- pv_target_pool2
+I1112 00:52:29.353405  6519 net.cpp:380] pv_target_ip1 -> pv_target_ip1
+I1112 00:52:29.366669  6519 net.cpp:122] Setting up pv_target_ip1
+I1112 00:52:29.366765  6519 net.cpp:129] Top shape: 200 500 (100000)
+I1112 00:52:29.366780  6519 net.cpp:137] Memory required for data: 117238400
+I1112 00:52:29.366798  6519 layer_factory.hpp:77] Creating layer pv_target_relu1
+I1112 00:52:29.366818  6519 net.cpp:84] Creating Layer pv_target_relu1
+I1112 00:52:29.366832  6519 net.cpp:406] pv_target_relu1 <- pv_target_ip1
+I1112 00:52:29.366852  6519 net.cpp:380] pv_target_relu1 -> pv_target_features
+I1112 00:52:29.366897  6519 net.cpp:122] Setting up pv_target_relu1
+I1112 00:52:29.366916  6519 net.cpp:129] Top shape: 200 500 (100000)
+I1112 00:52:29.366930  6519 net.cpp:137] Memory required for data: 117638400
+I1112 00:52:29.366942  6519 layer_factory.hpp:77] Creating layer pv_target_features_pv_target_relu1_0_split
+I1112 00:52:29.366960  6519 net.cpp:84] Creating Layer pv_target_features_pv_target_relu1_0_split
+I1112 00:52:29.366972  6519 net.cpp:406] pv_target_features_pv_target_relu1_0_split <- pv_target_features
+I1112 00:52:29.366989  6519 net.cpp:380] pv_target_features_pv_target_relu1_0_split -> pv_target_features_pv_target_relu1_0_split_0
+I1112 00:52:29.367008  6519 net.cpp:380] pv_target_features_pv_target_relu1_0_split -> pv_target_features_pv_target_relu1_0_split_1
+I1112 00:52:29.367054  6519 net.cpp:122] Setting up pv_target_features_pv_target_relu1_0_split
+I1112 00:52:29.367072  6519 net.cpp:129] Top shape: 200 500 (100000)
+I1112 00:52:29.367087  6519 net.cpp:129] Top shape: 200 500 (100000)
+I1112 00:52:29.367099  6519 net.cpp:137] Memory required for data: 118438400
+I1112 00:52:29.367110  6519 layer_factory.hpp:77] Creating layer conv1
+I1112 00:52:29.367135  6519 net.cpp:84] Creating Layer conv1
+I1112 00:52:29.367151  6519 net.cpp:406] conv1 <- data
+I1112 00:52:29.367167  6519 net.cpp:380] conv1 -> conv1
+I1112 00:52:29.367483  6519 net.cpp:122] Setting up conv1
+I1112 00:52:29.367508  6519 net.cpp:129] Top shape: 400 20 32 56 (14336000)
+I1112 00:52:29.367522  6519 net.cpp:137] Memory required for data: 175782400
+I1112 00:52:29.367535  6519 layer_factory.hpp:77] Creating layer pool1
+I1112 00:52:29.367549  6519 net.cpp:84] Creating Layer pool1
+I1112 00:52:29.367561  6519 net.cpp:406] pool1 <- conv1
+I1112 00:52:29.367575  6519 net.cpp:380] pool1 -> pool1
+I1112 00:52:29.367619  6519 net.cpp:122] Setting up pool1
+I1112 00:52:29.367637  6519 net.cpp:129] Top shape: 400 20 16 28 (3584000)
+I1112 00:52:29.367647  6519 net.cpp:137] Memory required for data: 190118400
+I1112 00:52:29.367658  6519 layer_factory.hpp:77] Creating layer conv2
+I1112 00:52:29.367676  6519 net.cpp:84] Creating Layer conv2
+I1112 00:52:29.367689  6519 net.cpp:406] conv2 <- pool1
+I1112 00:52:29.367702  6519 net.cpp:380] conv2 -> conv2
+I1112 00:52:29.368176  6519 net.cpp:122] Setting up conv2
+I1112 00:52:29.368201  6519 net.cpp:129] Top shape: 400 50 12 24 (5760000)
+I1112 00:52:29.368211  6519 net.cpp:137] Memory required for data: 213158400
+I1112 00:52:29.368223  6519 layer_factory.hpp:77] Creating layer pool2
+I1112 00:52:29.368235  6519 net.cpp:84] Creating Layer pool2
+I1112 00:52:29.368247  6519 net.cpp:406] pool2 <- conv2
+I1112 00:52:29.368258  6519 net.cpp:380] pool2 -> pool2
+I1112 00:52:29.368299  6519 net.cpp:122] Setting up pool2
+I1112 00:52:29.368314  6519 net.cpp:129] Top shape: 400 50 6 12 (1440000)
+I1112 00:52:29.368324  6519 net.cpp:137] Memory required for data: 218918400
+I1112 00:52:29.368333  6519 layer_factory.hpp:77] Creating layer ip1
+I1112 00:52:29.368346  6519 net.cpp:84] Creating Layer ip1
+I1112 00:52:29.368356  6519 net.cpp:406] ip1 <- pool2
+I1112 00:52:29.368369  6519 net.cpp:380] ip1 -> ip1
+I1112 00:52:29.386562  6519 net.cpp:122] Setting up ip1
+I1112 00:52:29.386740  6519 net.cpp:129] Top shape: 400 500 (200000)
+I1112 00:52:29.386757  6519 net.cpp:137] Memory required for data: 219718400
+I1112 00:52:29.386787  6519 layer_factory.hpp:77] Creating layer relu1
+I1112 00:52:29.386824  6519 net.cpp:84] Creating Layer relu1
+I1112 00:52:29.386853  6519 net.cpp:406] relu1 <- ip1
+I1112 00:52:29.386873  6519 net.cpp:367] relu1 -> ip1 (in-place)
+I1112 00:52:29.386891  6519 net.cpp:122] Setting up relu1
+I1112 00:52:29.386904  6519 net.cpp:129] Top shape: 400 500 (200000)
+I1112 00:52:29.386914  6519 net.cpp:137] Memory required for data: 220518400
+I1112 00:52:29.386926  6519 layer_factory.hpp:77] Creating layer slice_features_fc7
+I1112 00:52:29.386945  6519 net.cpp:84] Creating Layer slice_features_fc7
+I1112 00:52:29.386958  6519 net.cpp:406] slice_features_fc7 <- ip1
+I1112 00:52:29.386971  6519 net.cpp:380] slice_features_fc7 -> s_fc7
+I1112 00:52:29.386996  6519 net.cpp:380] slice_features_fc7 -> tl_fc7
+I1112 00:52:29.387073  6519 net.cpp:122] Setting up slice_features_fc7
+I1112 00:52:29.387094  6519 net.cpp:129] Top shape: 200 500 (100000)
+I1112 00:52:29.387106  6519 net.cpp:129] Top shape: 200 500 (100000)
+I1112 00:52:29.387118  6519 net.cpp:137] Memory required for data: 221318400
+I1112 00:52:29.387127  6519 layer_factory.hpp:77] Creating layer s_fc7_slice_features_fc7_0_split
+I1112 00:52:29.387145  6519 net.cpp:84] Creating Layer s_fc7_slice_features_fc7_0_split
+I1112 00:52:29.387156  6519 net.cpp:406] s_fc7_slice_features_fc7_0_split <- s_fc7
+I1112 00:52:29.387171  6519 net.cpp:380] s_fc7_slice_features_fc7_0_split -> s_fc7_slice_features_fc7_0_split_0
+I1112 00:52:29.387187  6519 net.cpp:380] s_fc7_slice_features_fc7_0_split -> s_fc7_slice_features_fc7_0_split_1
+I1112 00:52:29.387228  6519 net.cpp:380] s_fc7_slice_features_fc7_0_split -> s_fc7_slice_features_fc7_0_split_2
+I1112 00:52:29.387279  6519 net.cpp:122] Setting up s_fc7_slice_features_fc7_0_split
+I1112 00:52:29.387295  6519 net.cpp:129] Top shape: 200 500 (100000)
+I1112 00:52:29.387308  6519 net.cpp:129] Top shape: 200 500 (100000)
+I1112 00:52:29.387320  6519 net.cpp:129] Top shape: 200 500 (100000)
+I1112 00:52:29.387329  6519 net.cpp:137] Memory required for data: 222518400
+I1112 00:52:29.387341  6519 layer_factory.hpp:77] Creating layer split_target_fc7
+I1112 00:52:29.387359  6519 net.cpp:84] Creating Layer split_target_fc7
+I1112 00:52:29.387372  6519 net.cpp:406] split_target_fc7 <- tl_fc7
+I1112 00:52:29.387388  6519 net.cpp:380] split_target_fc7 -> t_fc7
+I1112 00:52:29.387419  6519 net.cpp:122] Setting up split_target_fc7
+I1112 00:52:29.387436  6519 net.cpp:129] Top shape: 200 500 (100000)
+I1112 00:52:29.387446  6519 net.cpp:137] Memory required for data: 222918400
+I1112 00:52:29.387456  6519 layer_factory.hpp:77] Creating layer t_fc7_split_target_fc7_0_split
+I1112 00:52:29.387470  6519 net.cpp:84] Creating Layer t_fc7_split_target_fc7_0_split
+I1112 00:52:29.387483  6519 net.cpp:406] t_fc7_split_target_fc7_0_split <- t_fc7
+I1112 00:52:29.387498  6519 net.cpp:380] t_fc7_split_target_fc7_0_split -> t_fc7_split_target_fc7_0_split_0
+I1112 00:52:29.387514  6519 net.cpp:380] t_fc7_split_target_fc7_0_split -> t_fc7_split_target_fc7_0_split_1
+I1112 00:52:29.387528  6519 net.cpp:380] t_fc7_split_target_fc7_0_split -> t_fc7_split_target_fc7_0_split_2
+I1112 00:52:29.387578  6519 net.cpp:122] Setting up t_fc7_split_target_fc7_0_split
+I1112 00:52:29.387595  6519 net.cpp:129] Top shape: 200 500 (100000)
+I1112 00:52:29.387606  6519 net.cpp:129] Top shape: 200 500 (100000)
+I1112 00:52:29.387619  6519 net.cpp:129] Top shape: 200 500 (100000)
+I1112 00:52:29.387629  6519 net.cpp:137] Memory required for data: 224118400
+I1112 00:52:29.387640  6519 layer_factory.hpp:77] Creating layer fc8_source
+I1112 00:52:29.387662  6519 net.cpp:84] Creating Layer fc8_source
+I1112 00:52:29.387676  6519 net.cpp:406] fc8_source <- s_fc7_slice_features_fc7_0_split_0
+I1112 00:52:29.387689  6519 net.cpp:380] fc8_source -> s_fc8
+I1112 00:52:29.387845  6519 net.cpp:122] Setting up fc8_source
+I1112 00:52:29.387886  6519 net.cpp:129] Top shape: 200 2 (400)
+I1112 00:52:29.387908  6519 net.cpp:137] Memory required for data: 224120000
+I1112 00:52:29.387925  6519 layer_factory.hpp:77] Creating layer s_fc8_fc8_source_0_split
+I1112 00:52:29.387941  6519 net.cpp:84] Creating Layer s_fc8_fc8_source_0_split
+I1112 00:52:29.387974  6519 net.cpp:406] s_fc8_fc8_source_0_split <- s_fc8
+I1112 00:52:29.387989  6519 net.cpp:380] s_fc8_fc8_source_0_split -> s_fc8_fc8_source_0_split_0
+I1112 00:52:29.388006  6519 net.cpp:380] s_fc8_fc8_source_0_split -> s_fc8_fc8_source_0_split_1
+I1112 00:52:29.388054  6519 net.cpp:122] Setting up s_fc8_fc8_source_0_split
+I1112 00:52:29.388069  6519 net.cpp:129] Top shape: 200 2 (400)
+I1112 00:52:29.388080  6519 net.cpp:129] Top shape: 200 2 (400)
+I1112 00:52:29.388090  6519 net.cpp:137] Memory required for data: 224123200
+I1112 00:52:29.388129  6519 layer_factory.hpp:77] Creating layer fc8_target
+I1112 00:52:29.388176  6519 net.cpp:84] Creating Layer fc8_target
+I1112 00:52:29.388191  6519 net.cpp:406] fc8_target <- t_fc7_split_target_fc7_0_split_0
+I1112 00:52:29.388207  6519 net.cpp:380] fc8_target -> t_fc8
+I1112 00:52:29.388321  6519 net.cpp:122] Setting up fc8_target
+I1112 00:52:29.388340  6519 net.cpp:129] Top shape: 200 2 (400)
+I1112 00:52:29.388351  6519 net.cpp:137] Memory required for data: 224124800
+I1112 00:52:29.388366  6519 layer_factory.hpp:77] Creating layer t_fc8_fc8_target_0_split
+I1112 00:52:29.388380  6519 net.cpp:84] Creating Layer t_fc8_fc8_target_0_split
+I1112 00:52:29.388389  6519 net.cpp:406] t_fc8_fc8_target_0_split <- t_fc8
+I1112 00:52:29.388402  6519 net.cpp:380] t_fc8_fc8_target_0_split -> t_fc8_fc8_target_0_split_0
+I1112 00:52:29.388418  6519 net.cpp:380] t_fc8_fc8_target_0_split -> t_fc8_fc8_target_0_split_1
+I1112 00:52:29.388458  6519 net.cpp:122] Setting up t_fc8_fc8_target_0_split
+I1112 00:52:29.388475  6519 net.cpp:129] Top shape: 200 2 (400)
+I1112 00:52:29.388489  6519 net.cpp:129] Top shape: 200 2 (400)
+I1112 00:52:29.388497  6519 net.cpp:137] Memory required for data: 224128000
+I1112 00:52:29.388507  6519 layer_factory.hpp:77] Creating layer split_features_target_fc8
+I1112 00:52:29.388523  6519 net.cpp:84] Creating Layer split_features_target_fc8
+I1112 00:52:29.388535  6519 net.cpp:406] split_features_target_fc8 <- t_fc8_fc8_target_0_split_0
+I1112 00:52:29.388548  6519 net.cpp:380] split_features_target_fc8 -> tl_fc8
+I1112 00:52:29.388578  6519 net.cpp:122] Setting up split_features_target_fc8
+I1112 00:52:29.388593  6519 net.cpp:129] Top shape: 200 2 (400)
+I1112 00:52:29.388607  6519 net.cpp:137] Memory required for data: 224129600
+I1112 00:52:29.388617  6519 layer_factory.hpp:77] Creating layer tl_fc8_split_features_target_fc8_0_split
+I1112 00:52:29.388628  6519 net.cpp:84] Creating Layer tl_fc8_split_features_target_fc8_0_split
+I1112 00:52:29.388638  6519 net.cpp:406] tl_fc8_split_features_target_fc8_0_split <- tl_fc8
+I1112 00:52:29.388654  6519 net.cpp:380] tl_fc8_split_features_target_fc8_0_split -> tl_fc8_split_features_target_fc8_0_split_0
+I1112 00:52:29.388669  6519 net.cpp:380] tl_fc8_split_features_target_fc8_0_split -> tl_fc8_split_features_target_fc8_0_split_1
+I1112 00:52:29.388706  6519 net.cpp:122] Setting up tl_fc8_split_features_target_fc8_0_split
+I1112 00:52:29.388722  6519 net.cpp:129] Top shape: 200 2 (400)
+I1112 00:52:29.388734  6519 net.cpp:129] Top shape: 200 2 (400)
+I1112 00:52:29.388743  6519 net.cpp:137] Memory required for data: 224132800
+I1112 00:52:29.388752  6519 layer_factory.hpp:77] Creating layer loss_regression_s
+I1112 00:52:29.388767  6519 net.cpp:84] Creating Layer loss_regression_s
+I1112 00:52:29.388777  6519 net.cpp:406] loss_regression_s <- s_fc8_fc8_source_0_split_0
+I1112 00:52:29.388788  6519 net.cpp:406] loss_regression_s <- lp_labels
+I1112 00:52:29.388799  6519 net.cpp:380] loss_regression_s -> loss_s
+I1112 00:52:29.388854  6519 net.cpp:122] Setting up loss_regression_s
+I1112 00:52:29.388867  6519 net.cpp:129] Top shape: (1)
+I1112 00:52:29.388877  6519 net.cpp:132]     with loss weight 1
+I1112 00:52:29.388916  6519 net.cpp:137] Memory required for data: 224132804
+I1112 00:52:29.388926  6519 layer_factory.hpp:77] Creating layer loss_regression_tl
+I1112 00:52:29.388941  6519 net.cpp:84] Creating Layer loss_regression_tl
+I1112 00:52:29.388949  6519 net.cpp:406] loss_regression_tl <- tl_fc8_split_features_target_fc8_0_split_0
+I1112 00:52:29.388983  6519 net.cpp:406] loss_regression_tl <- target_labels_wlabels_tl_1_split_0
+I1112 00:52:29.388994  6519 net.cpp:380] loss_regression_tl -> loss_tl
+I1112 00:52:29.389035  6519 net.cpp:122] Setting up loss_regression_tl
+I1112 00:52:29.389047  6519 net.cpp:129] Top shape: (1)
+I1112 00:52:29.389056  6519 net.cpp:132]     with loss weight 1
+I1112 00:52:29.389068  6519 net.cpp:137] Memory required for data: 224132808
+I1112 00:52:29.389078  6519 layer_factory.hpp:77] Creating layer mmd_loss_fc7
+I1112 00:52:29.389092  6519 net.cpp:84] Creating Layer mmd_loss_fc7
+I1112 00:52:29.389103  6519 net.cpp:406] mmd_loss_fc7 <- s_fc7_slice_features_fc7_0_split_1
+I1112 00:52:29.389114  6519 net.cpp:406] mmd_loss_fc7 <- t_fc7_split_target_fc7_0_split_1
+I1112 00:52:29.389128  6519 net.cpp:380] mmd_loss_fc7 -> fc7_mmd_loss
+I1112 00:52:29.389273  6519 net.cpp:122] Setting up mmd_loss_fc7
+I1112 00:52:29.389292  6519 net.cpp:129] Top shape: (1)
+I1112 00:52:29.389300  6519 net.cpp:132]     with loss weight 1e-05
+I1112 00:52:29.389314  6519 net.cpp:137] Memory required for data: 224132812
+I1112 00:52:29.389324  6519 layer_factory.hpp:77] Creating layer mmd_loss_fc8
+I1112 00:52:29.389338  6519 net.cpp:84] Creating Layer mmd_loss_fc8
+I1112 00:52:29.389349  6519 net.cpp:406] mmd_loss_fc8 <- s_fc8_fc8_source_0_split_1
+I1112 00:52:29.389363  6519 net.cpp:406] mmd_loss_fc8 <- t_fc8_fc8_target_0_split_1
+I1112 00:52:29.389375  6519 net.cpp:380] mmd_loss_fc8 -> fc8_mmd_loss
+I1112 00:52:29.389472  6519 net.cpp:122] Setting up mmd_loss_fc8
+I1112 00:52:29.389488  6519 net.cpp:129] Top shape: (1)
+I1112 00:52:29.389498  6519 net.cpp:132]     with loss weight 0.01
+I1112 00:52:29.389511  6519 net.cpp:137] Memory required for data: 224132816
+I1112 00:52:29.389521  6519 layer_factory.hpp:77] Creating layer diff_loss_source
+I1112 00:52:29.389541  6519 net.cpp:84] Creating Layer diff_loss_source
+I1112 00:52:29.389554  6519 net.cpp:406] diff_loss_source <- s_fc7_slice_features_fc7_0_split_2
+I1112 00:52:29.389567  6519 net.cpp:406] diff_loss_source <- pv_source_features
+I1112 00:52:29.389582  6519 net.cpp:380] diff_loss_source -> diff_loss_source
+I1112 00:52:29.389631  6519 net.cpp:122] Setting up diff_loss_source
+I1112 00:52:29.389648  6519 net.cpp:129] Top shape: (1)
+I1112 00:52:29.389658  6519 net.cpp:132]     with loss weight 0.01
+I1112 00:52:29.389673  6519 net.cpp:137] Memory required for data: 224132820
+I1112 00:52:29.389683  6519 layer_factory.hpp:77] Creating layer diff_loss_target
+I1112 00:52:29.389698  6519 net.cpp:84] Creating Layer diff_loss_target
+I1112 00:52:29.389709  6519 net.cpp:406] diff_loss_target <- t_fc7_split_target_fc7_0_split_2
+I1112 00:52:29.389722  6519 net.cpp:406] diff_loss_target <- pv_target_features_pv_target_relu1_0_split_0
+I1112 00:52:29.389736  6519 net.cpp:380] diff_loss_target -> diff_loss_target
+I1112 00:52:29.389780  6519 net.cpp:122] Setting up diff_loss_target
+I1112 00:52:29.389793  6519 net.cpp:129] Top shape: (1)
+I1112 00:52:29.389803  6519 net.cpp:132]     with loss weight 0.01
+I1112 00:52:29.389816  6519 net.cpp:137] Memory required for data: 224132824
+I1112 00:52:29.389827  6519 layer_factory.hpp:77] Creating layer split_features_target_fc8
+I1112 00:52:29.389840  6519 net.cpp:84] Creating Layer split_features_target_fc8
+I1112 00:52:29.389852  6519 net.cpp:406] split_features_target_fc8 <- pv_target_features_pv_target_relu1_0_split_1
+I1112 00:52:29.389866  6519 net.cpp:380] split_features_target_fc8 -> pv_target_features_wlabels
+I1112 00:52:29.389902  6519 net.cpp:122] Setting up split_features_target_fc8
+I1112 00:52:29.389917  6519 net.cpp:129] Top shape: 200 500 (100000)
+I1112 00:52:29.389927  6519 net.cpp:137] Memory required for data: 224532824
+I1112 00:52:29.389938  6519 layer_factory.hpp:77] Creating layer res_desired
+I1112 00:52:29.389960  6519 net.cpp:84] Creating Layer res_desired
+I1112 00:52:29.389971  6519 net.cpp:406] res_desired <- tl_fc8_split_features_target_fc8_0_split_1
+I1112 00:52:29.389982  6519 net.cpp:406] res_desired <- target_labels_wlabels_tl_1_split_1
+I1112 00:52:29.390019  6519 net.cpp:380] res_desired -> res_desired
+I1112 00:52:29.390075  6519 net.cpp:122] Setting up res_desired
+I1112 00:52:29.390092  6519 net.cpp:129] Top shape: 200 2 (400)
+I1112 00:52:29.390101  6519 net.cpp:137] Memory required for data: 224534424
+I1112 00:52:29.390111  6519 layer_factory.hpp:77] Creating layer res_prediction
+I1112 00:52:29.390132  6519 net.cpp:84] Creating Layer res_prediction
+I1112 00:52:29.390146  6519 net.cpp:406] res_prediction <- pv_target_features_wlabels
+I1112 00:52:29.390161  6519 net.cpp:380] res_prediction -> res_prediction
+I1112 00:52:29.390332  6519 net.cpp:122] Setting up res_prediction
+I1112 00:52:29.390354  6519 net.cpp:129] Top shape: 200 2 (400)
+I1112 00:52:29.390364  6519 net.cpp:137] Memory required for data: 224536024
+I1112 00:52:29.390385  6519 layer_factory.hpp:77] Creating layer res_loss
+I1112 00:52:29.390400  6519 net.cpp:84] Creating Layer res_loss
+I1112 00:52:29.390413  6519 net.cpp:406] res_loss <- res_prediction
+I1112 00:52:29.390425  6519 net.cpp:406] res_loss <- res_desired
+I1112 00:52:29.390437  6519 net.cpp:380] res_loss -> res_loss
+I1112 00:52:29.390518  6519 net.cpp:122] Setting up res_loss
+I1112 00:52:29.390537  6519 net.cpp:129] Top shape: (1)
+I1112 00:52:29.390547  6519 net.cpp:132]     with loss weight 1
+I1112 00:52:29.390560  6519 net.cpp:137] Memory required for data: 224536028
+I1112 00:52:29.390571  6519 net.cpp:198] res_loss needs backward computation.
+I1112 00:52:29.390589  6519 net.cpp:198] res_prediction needs backward computation.
+I1112 00:52:29.390601  6519 net.cpp:198] res_desired needs backward computation.
+I1112 00:52:29.390614  6519 net.cpp:198] split_features_target_fc8 needs backward computation.
+I1112 00:52:29.390626  6519 net.cpp:198] diff_loss_target needs backward computation.
+I1112 00:52:29.390640  6519 net.cpp:198] diff_loss_source needs backward computation.
+I1112 00:52:29.390651  6519 net.cpp:198] mmd_loss_fc8 needs backward computation.
+I1112 00:52:29.390664  6519 net.cpp:198] mmd_loss_fc7 needs backward computation.
+I1112 00:52:29.390677  6519 net.cpp:198] loss_regression_tl needs backward computation.
+I1112 00:52:29.390691  6519 net.cpp:198] loss_regression_s needs backward computation.
+I1112 00:52:29.390703  6519 net.cpp:198] tl_fc8_split_features_target_fc8_0_split needs backward computation.
+I1112 00:52:29.390714  6519 net.cpp:198] split_features_target_fc8 needs backward computation.
+I1112 00:52:29.390725  6519 net.cpp:198] t_fc8_fc8_target_0_split needs backward computation.
+I1112 00:52:29.390740  6519 net.cpp:198] fc8_target needs backward computation.
+I1112 00:52:29.390756  6519 net.cpp:198] s_fc8_fc8_source_0_split needs backward computation.
+I1112 00:52:29.390769  6519 net.cpp:198] fc8_source needs backward computation.
+I1112 00:52:29.390780  6519 net.cpp:198] t_fc7_split_target_fc7_0_split needs backward computation.
+I1112 00:52:29.390789  6519 net.cpp:198] split_target_fc7 needs backward computation.
+I1112 00:52:29.390795  6519 net.cpp:198] s_fc7_slice_features_fc7_0_split needs backward computation.
+I1112 00:52:29.390799  6519 net.cpp:198] slice_features_fc7 needs backward computation.
+I1112 00:52:29.390805  6519 net.cpp:198] relu1 needs backward computation.
+I1112 00:52:29.390810  6519 net.cpp:198] ip1 needs backward computation.
+I1112 00:52:29.390813  6519 net.cpp:198] pool2 needs backward computation.
+I1112 00:52:29.390818  6519 net.cpp:198] conv2 needs backward computation.
+I1112 00:52:29.390822  6519 net.cpp:198] pool1 needs backward computation.
+I1112 00:52:29.390827  6519 net.cpp:198] conv1 needs backward computation.
+I1112 00:52:29.390832  6519 net.cpp:198] pv_target_features_pv_target_relu1_0_split needs backward computation.
+I1112 00:52:29.390838  6519 net.cpp:198] pv_target_relu1 needs backward computation.
+I1112 00:52:29.390843  6519 net.cpp:198] pv_target_ip1 needs backward computation.
+I1112 00:52:29.390848  6519 net.cpp:198] pv_target_pool2 needs backward computation.
+I1112 00:52:29.390852  6519 net.cpp:198] pv_target_conv2 needs backward computation.
+I1112 00:52:29.390857  6519 net.cpp:198] pv_target_pool1 needs backward computation.
+I1112 00:52:29.390875  6519 net.cpp:198] pv_target_conv1 needs backward computation.
+I1112 00:52:29.390882  6519 net.cpp:198] relu1 needs backward computation.
+I1112 00:52:29.390887  6519 net.cpp:198] pv_source_ip1 needs backward computation.
+I1112 00:52:29.390892  6519 net.cpp:198] pv_source_pool2 needs backward computation.
+I1112 00:52:29.390897  6519 net.cpp:198] pv_source_conv2 needs backward computation.
+I1112 00:52:29.390902  6519 net.cpp:198] pv_source_pool1 needs backward computation.
+I1112 00:52:29.390908  6519 net.cpp:198] pv_source_conv1 needs backward computation.
+I1112 00:52:29.390914  6519 net.cpp:200] split_target_data does not need backward computation.
+I1112 00:52:29.390921  6519 net.cpp:200] concat_data does not need backward computation.
+I1112 00:52:29.390928  6519 net.cpp:200] target_labels_wlabels_tl_1_split does not need backward computation.
+I1112 00:52:29.390935  6519 net.cpp:200] target_data_wlabels_tl_0_split does not need backward computation.
+I1112 00:52:29.390941  6519 net.cpp:200] tl does not need backward computation.
+I1112 00:52:29.390945  6519 net.cpp:200] source_data_s_0_split does not need backward computation.
+I1112 00:52:29.390951  6519 net.cpp:200] s does not need backward computation.
+I1112 00:52:29.390955  6519 net.cpp:242] This network produces output diff_loss_source
+I1112 00:52:29.390961  6519 net.cpp:242] This network produces output diff_loss_target
+I1112 00:52:29.390965  6519 net.cpp:242] This network produces output fc7_mmd_loss
+I1112 00:52:29.390971  6519 net.cpp:242] This network produces output fc8_mmd_loss
+I1112 00:52:29.390975  6519 net.cpp:242] This network produces output loss_s
+I1112 00:52:29.390980  6519 net.cpp:242] This network produces output loss_tl
+I1112 00:52:29.390985  6519 net.cpp:242] This network produces output res_loss
+I1112 00:52:29.391036  6519 net.cpp:255] Network initialization done.
+I1112 00:52:29.391708  6519 solver.cpp:172] Creating test net (#0) specified by net file: ./models/DAN/jointGazeNet/layers_dsnres_alltlabels.prototxt
+I1112 00:52:29.391773  6519 net.cpp:294] The NetState phase (1) differed from the phase (0) specified by a rule in layer s
+I1112 00:52:29.391778  6519 net.cpp:294] The NetState phase (1) differed from the phase (0) specified by a rule in layer tl
+I1112 00:52:29.391784  6519 net.cpp:294] The NetState phase (1) differed from the phase (0) specified by a rule in layer concat_data
+I1112 00:52:29.391788  6519 net.cpp:294] The NetState phase (1) differed from the phase (0) specified by a rule in layer split_target_data
+I1112 00:52:29.391793  6519 net.cpp:294] The NetState phase (1) differed from the phase (0) specified by a rule in layer pv_source_conv1
+I1112 00:52:29.391798  6519 net.cpp:294] The NetState phase (1) differed from the phase (0) specified by a rule in layer pv_source_pool1
+I1112 00:52:29.391801  6519 net.cpp:294] The NetState phase (1) differed from the phase (0) specified by a rule in layer pv_source_conv2
+I1112 00:52:29.391805  6519 net.cpp:294] The NetState phase (1) differed from the phase (0) specified by a rule in layer pv_source_pool2
+I1112 00:52:29.391809  6519 net.cpp:294] The NetState phase (1) differed from the phase (0) specified by a rule in layer pv_source_ip1
+I1112 00:52:29.391813  6519 net.cpp:294] The NetState phase (1) differed from the phase (0) specified by a rule in layer relu1
+I1112 00:52:29.391824  6519 net.cpp:294] The NetState phase (1) differed from the phase (0) specified by a rule in layer slice_features_fc7
+I1112 00:52:29.391829  6519 net.cpp:294] The NetState phase (1) differed from the phase (0) specified by a rule in layer split_target_fc7
+I1112 00:52:29.391831  6519 net.cpp:294] The NetState phase (1) differed from the phase (0) specified by a rule in layer fc8_source
+I1112 00:52:29.391836  6519 net.cpp:294] The NetState phase (1) differed from the phase (0) specified by a rule in layer split_features_target_fc8
+I1112 00:52:29.391840  6519 net.cpp:294] The NetState phase (1) differed from the phase (0) specified by a rule in layer loss_regression_s
+I1112 00:52:29.391845  6519 net.cpp:294] The NetState phase (1) differed from the phase (0) specified by a rule in layer loss_regression_tl
+I1112 00:52:29.391863  6519 net.cpp:294] The NetState phase (1) differed from the phase (0) specified by a rule in layer mmd_loss_fc7
+I1112 00:52:29.391867  6519 net.cpp:294] The NetState phase (1) differed from the phase (0) specified by a rule in layer mmd_loss_fc8
+I1112 00:52:29.391871  6519 net.cpp:294] The NetState phase (1) differed from the phase (0) specified by a rule in layer diff_loss_source
+I1112 00:52:29.391875  6519 net.cpp:294] The NetState phase (1) differed from the phase (0) specified by a rule in layer diff_loss_target
+I1112 00:52:29.391878  6519 net.cpp:294] The NetState phase (1) differed from the phase (0) specified by a rule in layer split_features_target_fc8
+I1112 00:52:29.391882  6519 net.cpp:294] The NetState phase (1) differed from the phase (0) specified by a rule in layer res_desired
+I1112 00:52:29.391888  6519 net.cpp:294] The NetState phase (1) differed from the phase (0) specified by a rule in layer res_loss
+I1112 00:52:29.392047  6519 net.cpp:51] Initializing net from parameters: 
+name: "JointGazeNet"
+state {
+  phase: TEST
+}
+layer {
+  name: "target_test"
+  type: "HDF5Data"
+  top: "data"
+  top: "lp_labels"
+  include {
+    phase: TEST
+  }
+  hdf5_data_param {
+    source: "./models/DAN/jointGazeNet/test_list_transfer.txt"
+    batch_size: 100
+  }
+}
+layer {
+  name: "target_data_rename"
+  type: "Split"
+  bottom: "data"
+  top: "target_data"
+  include {
+    phase: TEST
+  }
+}
+layer {
+  name: "pv_target_conv1"
+  type: "Convolution"
+  bottom: "target_data"
+  top: "pv_target_conv1"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  convolution_param {
+    num_output: 20
+    kernel_size: 5
+    stride: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.1
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {
+  name: "pv_target_pool1"
+  type: "Pooling"
+  bottom: "pv_target_conv1"
+  top: "pv_target_pool1"
+  pooling_param {
+    pool: MAX
+    kernel_size: 2
+    stride: 2
+  }
+}
+layer {
+  name: "pv_target_conv2"
+  type: "Convolution"
+  bottom: "pv_target_pool1"
+  top: "pv_target_conv2"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  convolution_param {
+    num_output: 50
+    kernel_size: 5
+    stride: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {
+  name: "pv_target_pool2"
+  type: "Pooling"
+  bottom: "pv_target_conv2"
+  top: "pv_target_pool2"
+  pooling_param {
+    pool: MAX
+    kernel_size: 2
+    stride: 2
+  }
+}
+layer {
+  name: "pv_target_ip1"
+  type: "InnerProduct"
+  bottom: "pv_target_pool2"
+  top: "pv_target_ip1"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 500
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {
+  name: "pv_target_relu1"
+  type: "ReLU"
+  bottom: "pv_target_ip1"
+  top: "pv_target_features"
+}
+layer {
+  name: "conv1"
+  type: "Convolution"
+  bottom: "data"
+  top: "conv1"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  convolution_param {
+    num_output: 20
+    kernel_size: 5
+    stride: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.1
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {
+  name: "pool1"
+  type: "Pooling"
+  bottom: "conv1"
+  top: "pool1"
+  pooling_param {
+    pool: MAX
+    kernel_size: 2
+    stride: 2
+  }
+}
+layer {
+  name: "conv2"
+  type: "Convolution"
+  bottom: "pool1"
+  top: "conv2"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  convolution_param {
+    num_output: 50
+    kernel_size: 5
+    stride: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {
+  name: "pool2"
+  type: "Pooling"
+  bottom: "conv2"
+  top: "pool2"
+  pooling_param {
+    pool: MAX
+    kernel_size: 2
+    stride: 2
+  }
+}
+layer {
+  name: "ip1"
+  type: "InnerProduct"
+  bottom: "pool2"
+  top: "ip1"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 500
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {
+  name: "relu1"
+  type: "ReLU"
+  bottom: "ip1"
+  top: "ip1"
+}
+layer {
+  name: "fc7_alias"
+  type: "Split"
+  bottom: "ip1"
+  top: "t_fc7"
+  include {
+    phase: TEST
+  }
+}
+layer {
+  name: "fc8_target"
+  type: "InnerProduct"
+  bottom: "t_fc7"
+  top: "t_fc8"
+  param {
+    lr_mult: 10
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 20
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 2
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+layer {
+  name: "pv_target_features_rename"
+  type: "Split"
+  bottom: "pv_target_features"
+  top: "pv_target_features_wlabels"
+  include {
+    phase: TEST
+  }
+}
+layer {
+  name: "res_prediction"
+  type: "InnerProduct"
+  bottom: "pv_target_features_wlabels"
+  top: "res_prediction"
+  param {
+    lr_mult: 10
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 20
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 2
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+layer {
+  name: "target_label_prediction"
+  type: "Eltwise"
+  bottom: "t_fc8"
+  bottom: "res_prediction"
+  top: "target_label_prediction"
+  include {
+    phase: TEST
+  }
+  eltwise_param {
+    operation: SUM
+    coeff: 1
+    coeff: -1
+  }
+}
+layer {
+  name: "accuracy"
+  type: "AccuracyGaze"
+  bottom: "target_label_prediction"
+  bottom: "lp_labels"
+  top: "accuracy"
+  include {
+    phase: TEST
+  }
+}
+I1112 00:52:29.392145  6519 layer_factory.hpp:77] Creating layer target_test
+I1112 00:52:29.392158  6519 net.cpp:84] Creating Layer target_test
+I1112 00:52:29.392164  6519 net.cpp:380] target_test -> data
+I1112 00:52:29.392177  6519 net.cpp:380] target_test -> lp_labels
+I1112 00:52:29.392184  6519 hdf5_data_layer.cpp:80] Loading list of HDF5 filenames from: ./models/DAN/jointGazeNet/test_list_transfer.txt
+I1112 00:52:29.392227  6519 hdf5_data_layer.cpp:94] Number of HDF5 files: 1
+I1112 00:52:29.460059  6519 net.cpp:122] Setting up target_test
+I1112 00:52:29.460103  6519 net.cpp:129] Top shape: 100 1 36 60 (216000)
+I1112 00:52:29.460108  6519 net.cpp:129] Top shape: 100 2 (200)
+I1112 00:52:29.460113  6519 net.cpp:137] Memory required for data: 864800
+I1112 00:52:29.460122  6519 layer_factory.hpp:77] Creating layer data_target_test_0_split
+I1112 00:52:29.460142  6519 net.cpp:84] Creating Layer data_target_test_0_split
+I1112 00:52:29.460149  6519 net.cpp:406] data_target_test_0_split <- data
+I1112 00:52:29.460160  6519 net.cpp:380] data_target_test_0_split -> data_target_test_0_split_0
+I1112 00:52:29.460192  6519 net.cpp:380] data_target_test_0_split -> data_target_test_0_split_1
+I1112 00:52:29.460240  6519 net.cpp:122] Setting up data_target_test_0_split
+I1112 00:52:29.460259  6519 net.cpp:129] Top shape: 100 1 36 60 (216000)
+I1112 00:52:29.460273  6519 net.cpp:129] Top shape: 100 1 36 60 (216000)
+I1112 00:52:29.460284  6519 net.cpp:137] Memory required for data: 2592800
+I1112 00:52:29.460294  6519 layer_factory.hpp:77] Creating layer target_data_rename
+I1112 00:52:29.460310  6519 net.cpp:84] Creating Layer target_data_rename
+I1112 00:52:29.460322  6519 net.cpp:406] target_data_rename <- data_target_test_0_split_0
+I1112 00:52:29.460335  6519 net.cpp:380] target_data_rename -> target_data
+I1112 00:52:29.460369  6519 net.cpp:122] Setting up target_data_rename
+I1112 00:52:29.460386  6519 net.cpp:129] Top shape: 100 1 36 60 (216000)
+I1112 00:52:29.460397  6519 net.cpp:137] Memory required for data: 3456800
+I1112 00:52:29.460407  6519 layer_factory.hpp:77] Creating layer pv_target_conv1
+I1112 00:52:29.460435  6519 net.cpp:84] Creating Layer pv_target_conv1
+I1112 00:52:29.460449  6519 net.cpp:406] pv_target_conv1 <- target_data
+I1112 00:52:29.460465  6519 net.cpp:380] pv_target_conv1 -> pv_target_conv1
+I1112 00:52:29.460724  6519 net.cpp:122] Setting up pv_target_conv1
+I1112 00:52:29.460736  6519 net.cpp:129] Top shape: 100 20 32 56 (3584000)
+I1112 00:52:29.460767  6519 net.cpp:137] Memory required for data: 17792800
+I1112 00:52:29.460783  6519 layer_factory.hpp:77] Creating layer pv_target_pool1
+I1112 00:52:29.460793  6519 net.cpp:84] Creating Layer pv_target_pool1
+I1112 00:52:29.460798  6519 net.cpp:406] pv_target_pool1 <- pv_target_conv1
+I1112 00:52:29.460805  6519 net.cpp:380] pv_target_pool1 -> pv_target_pool1
+I1112 00:52:29.460849  6519 net.cpp:122] Setting up pv_target_pool1
+I1112 00:52:29.460858  6519 net.cpp:129] Top shape: 100 20 16 28 (896000)
+I1112 00:52:29.460862  6519 net.cpp:137] Memory required for data: 21376800
+I1112 00:52:29.460866  6519 layer_factory.hpp:77] Creating layer pv_target_conv2
+I1112 00:52:29.460877  6519 net.cpp:84] Creating Layer pv_target_conv2
+I1112 00:52:29.460893  6519 net.cpp:406] pv_target_conv2 <- pv_target_pool1
+I1112 00:52:29.460907  6519 net.cpp:380] pv_target_conv2 -> pv_target_conv2
+I1112 00:52:29.461441  6519 net.cpp:122] Setting up pv_target_conv2
+I1112 00:52:29.461475  6519 net.cpp:129] Top shape: 100 50 12 24 (1440000)
+I1112 00:52:29.461488  6519 net.cpp:137] Memory required for data: 27136800
+I1112 00:52:29.461504  6519 layer_factory.hpp:77] Creating layer pv_target_pool2
+I1112 00:52:29.461519  6519 net.cpp:84] Creating Layer pv_target_pool2
+I1112 00:52:29.461531  6519 net.cpp:406] pv_target_pool2 <- pv_target_conv2
+I1112 00:52:29.461544  6519 net.cpp:380] pv_target_pool2 -> pv_target_pool2
+I1112 00:52:29.461589  6519 net.cpp:122] Setting up pv_target_pool2
+I1112 00:52:29.461606  6519 net.cpp:129] Top shape: 100 50 6 12 (360000)
+I1112 00:52:29.461616  6519 net.cpp:137] Memory required for data: 28576800
+I1112 00:52:29.461627  6519 layer_factory.hpp:77] Creating layer pv_target_ip1
+I1112 00:52:29.461642  6519 net.cpp:84] Creating Layer pv_target_ip1
+I1112 00:52:29.461650  6519 net.cpp:406] pv_target_ip1 <- pv_target_pool2
+I1112 00:52:29.461663  6519 net.cpp:380] pv_target_ip1 -> pv_target_ip1
+I1112 00:52:29.485793  6519 net.cpp:122] Setting up pv_target_ip1
+I1112 00:52:29.485894  6519 net.cpp:129] Top shape: 100 500 (50000)
+I1112 00:52:29.485900  6519 net.cpp:137] Memory required for data: 28776800
+I1112 00:52:29.485931  6519 layer_factory.hpp:77] Creating layer pv_target_relu1
+I1112 00:52:29.485957  6519 net.cpp:84] Creating Layer pv_target_relu1
+I1112 00:52:29.485963  6519 net.cpp:406] pv_target_relu1 <- pv_target_ip1
+I1112 00:52:29.485976  6519 net.cpp:380] pv_target_relu1 -> pv_target_features
+I1112 00:52:29.486030  6519 net.cpp:122] Setting up pv_target_relu1
+I1112 00:52:29.486038  6519 net.cpp:129] Top shape: 100 500 (50000)
+I1112 00:52:29.486042  6519 net.cpp:137] Memory required for data: 28976800
+I1112 00:52:29.486047  6519 layer_factory.hpp:77] Creating layer conv1
+I1112 00:52:29.486070  6519 net.cpp:84] Creating Layer conv1
+I1112 00:52:29.486079  6519 net.cpp:406] conv1 <- data_target_test_0_split_1
+I1112 00:52:29.486086  6519 net.cpp:380] conv1 -> conv1
+I1112 00:52:29.486407  6519 net.cpp:122] Setting up conv1
+I1112 00:52:29.486424  6519 net.cpp:129] Top shape: 100 20 32 56 (3584000)
+I1112 00:52:29.486430  6519 net.cpp:137] Memory required for data: 43312800
+I1112 00:52:29.486441  6519 layer_factory.hpp:77] Creating layer pool1
+I1112 00:52:29.486455  6519 net.cpp:84] Creating Layer pool1
+I1112 00:52:29.486461  6519 net.cpp:406] pool1 <- conv1
+I1112 00:52:29.486469  6519 net.cpp:380] pool1 -> pool1
+I1112 00:52:29.486510  6519 net.cpp:122] Setting up pool1
+I1112 00:52:29.486536  6519 net.cpp:129] Top shape: 100 20 16 28 (896000)
+I1112 00:52:29.486539  6519 net.cpp:137] Memory required for data: 46896800
+I1112 00:52:29.486544  6519 layer_factory.hpp:77] Creating layer conv2
+I1112 00:52:29.486555  6519 net.cpp:84] Creating Layer conv2
+I1112 00:52:29.486559  6519 net.cpp:406] conv2 <- pool1
+I1112 00:52:29.486565  6519 net.cpp:380] conv2 -> conv2
+I1112 00:52:29.487002  6519 net.cpp:122] Setting up conv2
+I1112 00:52:29.487015  6519 net.cpp:129] Top shape: 100 50 12 24 (1440000)
+I1112 00:52:29.487018  6519 net.cpp:137] Memory required for data: 52656800
+I1112 00:52:29.487033  6519 layer_factory.hpp:77] Creating layer pool2
+I1112 00:52:29.487077  6519 net.cpp:84] Creating Layer pool2
+I1112 00:52:29.487087  6519 net.cpp:406] pool2 <- conv2
+I1112 00:52:29.487093  6519 net.cpp:380] pool2 -> pool2
+I1112 00:52:29.487138  6519 net.cpp:122] Setting up pool2
+I1112 00:52:29.487144  6519 net.cpp:129] Top shape: 100 50 6 12 (360000)
+I1112 00:52:29.487149  6519 net.cpp:137] Memory required for data: 54096800
+I1112 00:52:29.487152  6519 layer_factory.hpp:77] Creating layer ip1
+I1112 00:52:29.487162  6519 net.cpp:84] Creating Layer ip1
+I1112 00:52:29.487167  6519 net.cpp:406] ip1 <- pool2
+I1112 00:52:29.487174  6519 net.cpp:380] ip1 -> ip1
+I1112 00:52:29.521551  6519 net.cpp:122] Setting up ip1
+I1112 00:52:29.521723  6519 net.cpp:129] Top shape: 100 500 (50000)
+I1112 00:52:29.521742  6519 net.cpp:137] Memory required for data: 54296800
+I1112 00:52:29.521778  6519 layer_factory.hpp:77] Creating layer relu1
+I1112 00:52:29.521811  6519 net.cpp:84] Creating Layer relu1
+I1112 00:52:29.521826  6519 net.cpp:406] relu1 <- ip1
+I1112 00:52:29.521848  6519 net.cpp:367] relu1 -> ip1 (in-place)
+I1112 00:52:29.521874  6519 net.cpp:122] Setting up relu1
+I1112 00:52:29.521889  6519 net.cpp:129] Top shape: 100 500 (50000)
+I1112 00:52:29.521901  6519 net.cpp:137] Memory required for data: 54496800
+I1112 00:52:29.521914  6519 layer_factory.hpp:77] Creating layer fc7_alias
+I1112 00:52:29.521930  6519 net.cpp:84] Creating Layer fc7_alias
+I1112 00:52:29.521944  6519 net.cpp:406] fc7_alias <- ip1
+I1112 00:52:29.521957  6519 net.cpp:380] fc7_alias -> t_fc7
+I1112 00:52:29.522047  6519 net.cpp:122] Setting up fc7_alias
+I1112 00:52:29.522068  6519 net.cpp:129] Top shape: 100 500 (50000)
+I1112 00:52:29.522078  6519 net.cpp:137] Memory required for data: 54696800
+I1112 00:52:29.522090  6519 layer_factory.hpp:77] Creating layer fc8_target
+I1112 00:52:29.522114  6519 net.cpp:84] Creating Layer fc8_target
+I1112 00:52:29.522126  6519 net.cpp:406] fc8_target <- t_fc7
+I1112 00:52:29.522142  6519 net.cpp:380] fc8_target -> t_fc8
+I1112 00:52:29.522294  6519 net.cpp:122] Setting up fc8_target
+I1112 00:52:29.522312  6519 net.cpp:129] Top shape: 100 2 (200)
+I1112 00:52:29.522325  6519 net.cpp:137] Memory required for data: 54697600
+I1112 00:52:29.522341  6519 layer_factory.hpp:77] Creating layer pv_target_features_rename
+I1112 00:52:29.522356  6519 net.cpp:84] Creating Layer pv_target_features_rename
+I1112 00:52:29.522368  6519 net.cpp:406] pv_target_features_rename <- pv_target_features
+I1112 00:52:29.522384  6519 net.cpp:380] pv_target_features_rename -> pv_target_features_wlabels
+I1112 00:52:29.522423  6519 net.cpp:122] Setting up pv_target_features_rename
+I1112 00:52:29.522441  6519 net.cpp:129] Top shape: 100 500 (50000)
+I1112 00:52:29.522455  6519 net.cpp:137] Memory required for data: 54897600
+I1112 00:52:29.522469  6519 layer_factory.hpp:77] Creating layer res_prediction
+I1112 00:52:29.522490  6519 net.cpp:84] Creating Layer res_prediction
+I1112 00:52:29.522505  6519 net.cpp:406] res_prediction <- pv_target_features_wlabels
+I1112 00:52:29.522521  6519 net.cpp:380] res_prediction -> res_prediction
+I1112 00:52:29.522649  6519 net.cpp:122] Setting up res_prediction
+I1112 00:52:29.522675  6519 net.cpp:129] Top shape: 100 2 (200)
+I1112 00:52:29.522687  6519 net.cpp:137] Memory required for data: 54898400
+I1112 00:52:29.522704  6519 layer_factory.hpp:77] Creating layer target_label_prediction
+I1112 00:52:29.522727  6519 net.cpp:84] Creating Layer target_label_prediction
+I1112 00:52:29.522740  6519 net.cpp:406] target_label_prediction <- t_fc8
+I1112 00:52:29.522754  6519 net.cpp:406] target_label_prediction <- res_prediction
+I1112 00:52:29.522770  6519 net.cpp:380] target_label_prediction -> target_label_prediction
+I1112 00:52:29.522807  6519 net.cpp:122] Setting up target_label_prediction
+I1112 00:52:29.522825  6519 net.cpp:129] Top shape: 100 2 (200)
+I1112 00:52:29.522841  6519 net.cpp:137] Memory required for data: 54899200
+I1112 00:52:29.522855  6519 layer_factory.hpp:77] Creating layer accuracy
+I1112 00:52:29.522891  6519 net.cpp:84] Creating Layer accuracy
+I1112 00:52:29.522931  6519 net.cpp:406] accuracy <- target_label_prediction
+I1112 00:52:29.522948  6519 net.cpp:406] accuracy <- lp_labels
+I1112 00:52:29.522964  6519 net.cpp:380] accuracy -> accuracy
+I1112 00:52:29.523001  6519 net.cpp:122] Setting up accuracy
+I1112 00:52:29.523020  6519 net.cpp:129] Top shape: 1 1 1 1 (1)
+I1112 00:52:29.523031  6519 net.cpp:137] Memory required for data: 54899204
+I1112 00:52:29.523046  6519 net.cpp:200] accuracy does not need backward computation.
+I1112 00:52:29.523063  6519 net.cpp:200] target_label_prediction does not need backward computation.
+I1112 00:52:29.523077  6519 net.cpp:200] res_prediction does not need backward computation.
+I1112 00:52:29.523088  6519 net.cpp:200] pv_target_features_rename does not need backward computation.
+I1112 00:52:29.523102  6519 net.cpp:200] fc8_target does not need backward computation.
+I1112 00:52:29.523113  6519 net.cpp:200] fc7_alias does not need backward computation.
+I1112 00:52:29.523126  6519 net.cpp:200] relu1 does not need backward computation.
+I1112 00:52:29.523138  6519 net.cpp:200] ip1 does not need backward computation.
+I1112 00:52:29.523151  6519 net.cpp:200] pool2 does not need backward computation.
+I1112 00:52:29.523164  6519 net.cpp:200] conv2 does not need backward computation.
+I1112 00:52:29.523176  6519 net.cpp:200] pool1 does not need backward computation.
+I1112 00:52:29.523221  6519 net.cpp:200] conv1 does not need backward computation.
+I1112 00:52:29.523239  6519 net.cpp:200] pv_target_relu1 does not need backward computation.
+I1112 00:52:29.523269  6519 net.cpp:200] pv_target_ip1 does not need backward computation.
+I1112 00:52:29.523283  6519 net.cpp:200] pv_target_pool2 does not need backward computation.
+I1112 00:52:29.523295  6519 net.cpp:200] pv_target_conv2 does not need backward computation.
+I1112 00:52:29.523311  6519 net.cpp:200] pv_target_pool1 does not need backward computation.
+I1112 00:52:29.523326  6519 net.cpp:200] pv_target_conv1 does not need backward computation.
+I1112 00:52:29.523339  6519 net.cpp:200] target_data_rename does not need backward computation.
+I1112 00:52:29.523353  6519 net.cpp:200] data_target_test_0_split does not need backward computation.
+I1112 00:52:29.523365  6519 net.cpp:200] target_test does not need backward computation.
+I1112 00:52:29.523376  6519 net.cpp:242] This network produces output accuracy
+I1112 00:52:29.523399  6519 net.cpp:255] Network initialization done.
+I1112 00:52:29.523528  6519 solver.cpp:56] Solver scaffolding done.
+I1112 00:52:29.524246  6519 caffe.cpp:248] Starting Optimization
+I1112 00:52:29.524271  6519 solver.cpp:272] Solving JointGazeNet
+I1112 00:52:29.524282  6519 solver.cpp:273] Learning Rate Policy: inv
+I1112 00:52:29.548941  6519 solver.cpp:330] Iteration 0, Testing net (#0)
+I1112 00:52:29.549062  6519 net.cpp:676] Ignoring source layer s
+I1112 00:52:29.549074  6519 net.cpp:676] Ignoring source layer source_data_s_0_split
+I1112 00:52:29.549085  6519 net.cpp:676] Ignoring source layer tl
+I1112 00:52:29.549094  6519 net.cpp:676] Ignoring source layer target_data_wlabels_tl_0_split
+I1112 00:52:29.549105  6519 net.cpp:676] Ignoring source layer target_labels_wlabels_tl_1_split
+I1112 00:52:29.549116  6519 net.cpp:676] Ignoring source layer concat_data
+I1112 00:52:29.549125  6519 net.cpp:676] Ignoring source layer split_target_data
+I1112 00:52:29.549135  6519 net.cpp:676] Ignoring source layer pv_source_conv1
+I1112 00:52:29.549146  6519 net.cpp:676] Ignoring source layer pv_source_pool1
+I1112 00:52:29.549156  6519 net.cpp:676] Ignoring source layer pv_source_conv2
+I1112 00:52:29.549167  6519 net.cpp:676] Ignoring source layer pv_source_pool2
+I1112 00:52:29.549177  6519 net.cpp:676] Ignoring source layer pv_source_ip1
+I1112 00:52:29.551791  6519 net.cpp:676] Ignoring source layer pv_target_features_pv_target_relu1_0_split
+I1112 00:52:29.554427  6519 net.cpp:676] Ignoring source layer slice_features_fc7
+I1112 00:52:29.554476  6519 net.cpp:676] Ignoring source layer s_fc7_slice_features_fc7_0_split
+I1112 00:52:29.554496  6519 net.cpp:676] Ignoring source layer split_target_fc7
+I1112 00:52:29.554517  6519 net.cpp:676] Ignoring source layer t_fc7_split_target_fc7_0_split
+I1112 00:52:29.554527  6519 net.cpp:676] Ignoring source layer fc8_source
+I1112 00:52:29.554536  6519 net.cpp:676] Ignoring source layer s_fc8_fc8_source_0_split
+I1112 00:52:29.554601  6519 net.cpp:676] Ignoring source layer t_fc8_fc8_target_0_split
+I1112 00:52:29.554615  6519 net.cpp:676] Ignoring source layer split_features_target_fc8
+I1112 00:52:29.554625  6519 net.cpp:676] Ignoring source layer tl_fc8_split_features_target_fc8_0_split
+I1112 00:52:29.554633  6519 net.cpp:676] Ignoring source layer loss_regression_s
+I1112 00:52:29.554642  6519 net.cpp:676] Ignoring source layer loss_regression_tl
+I1112 00:52:29.554652  6519 net.cpp:676] Ignoring source layer mmd_loss_fc7
+I1112 00:52:29.554662  6519 net.cpp:676] Ignoring source layer mmd_loss_fc8
+I1112 00:52:29.554672  6519 net.cpp:676] Ignoring source layer diff_loss_source
+I1112 00:52:29.554680  6519 net.cpp:676] Ignoring source layer diff_loss_target
+I1112 00:52:29.554690  6519 net.cpp:676] Ignoring source layer split_features_target_fc8
+I1112 00:52:29.554699  6519 net.cpp:676] Ignoring source layer res_desired
+I1112 00:52:29.554742  6519 net.cpp:676] Ignoring source layer res_loss
+I1112 00:52:31.257710  6519 solver.cpp:397]     Test net output #0: accuracy = 11.772
+I1112 00:57:48.759665  6519 solver.cpp:330] Iteration 100, Testing net (#0)
+I1112 00:57:48.759778  6519 net.cpp:676] Ignoring source layer s
+I1112 00:57:48.759794  6519 net.cpp:676] Ignoring source layer source_data_s_0_split
+I1112 00:57:48.759804  6519 net.cpp:676] Ignoring source layer tl
+I1112 00:57:48.759817  6519 net.cpp:676] Ignoring source layer target_data_wlabels_tl_0_split
+I1112 00:57:48.759829  6519 net.cpp:676] Ignoring source layer target_labels_wlabels_tl_1_split
+I1112 00:57:48.759840  6519 net.cpp:676] Ignoring source layer concat_data
+I1112 00:57:48.759850  6519 net.cpp:676] Ignoring source layer split_target_data
+I1112 00:57:48.759861  6519 net.cpp:676] Ignoring source layer pv_source_conv1
+I1112 00:57:48.759872  6519 net.cpp:676] Ignoring source layer pv_source_pool1
+I1112 00:57:48.759883  6519 net.cpp:676] Ignoring source layer pv_source_conv2
+I1112 00:57:48.759896  6519 net.cpp:676] Ignoring source layer pv_source_pool2
+I1112 00:57:48.759909  6519 net.cpp:676] Ignoring source layer pv_source_ip1
+I1112 00:57:48.759925  6519 net.cpp:676] Ignoring source layer pv_target_features_pv_target_relu1_0_split
+I1112 00:57:48.759940  6519 net.cpp:676] Ignoring source layer slice_features_fc7
+I1112 00:57:48.759951  6519 net.cpp:676] Ignoring source layer s_fc7_slice_features_fc7_0_split
+I1112 00:57:48.759963  6519 net.cpp:676] Ignoring source layer split_target_fc7
+I1112 00:57:48.759974  6519 net.cpp:676] Ignoring source layer t_fc7_split_target_fc7_0_split
+I1112 00:57:48.759984  6519 net.cpp:676] Ignoring source layer fc8_source
+I1112 00:57:48.759995  6519 net.cpp:676] Ignoring source layer s_fc8_fc8_source_0_split
+I1112 00:57:48.760010  6519 net.cpp:676] Ignoring source layer t_fc8_fc8_target_0_split
+I1112 00:57:48.760021  6519 net.cpp:676] Ignoring source layer split_features_target_fc8
+I1112 00:57:48.760031  6519 net.cpp:676] Ignoring source layer tl_fc8_split_features_target_fc8_0_split
+I1112 00:57:48.760043  6519 net.cpp:676] Ignoring source layer loss_regression_s
+I1112 00:57:48.760056  6519 net.cpp:676] Ignoring source layer loss_regression_tl
+I1112 00:57:48.760066  6519 net.cpp:676] Ignoring source layer mmd_loss_fc7
+I1112 00:57:48.760076  6519 net.cpp:676] Ignoring source layer mmd_loss_fc8
+I1112 00:57:48.760087  6519 net.cpp:676] Ignoring source layer diff_loss_source
+I1112 00:57:48.760099  6519 net.cpp:676] Ignoring source layer diff_loss_target
+I1112 00:57:48.760110  6519 net.cpp:676] Ignoring source layer split_features_target_fc8
+I1112 00:57:48.760121  6519 net.cpp:676] Ignoring source layer res_desired
+I1112 00:57:48.760134  6519 net.cpp:676] Ignoring source layer res_loss
+I1112 00:57:50.365089  6519 solver.cpp:397]     Test net output #0: accuracy = 8.40636
+I1112 01:03:07.760982  6519 solver.cpp:330] Iteration 200, Testing net (#0)
+I1112 01:03:07.771929  6519 net.cpp:676] Ignoring source layer s
+I1112 01:03:07.771942  6519 net.cpp:676] Ignoring source layer source_data_s_0_split
+I1112 01:03:07.771946  6519 net.cpp:676] Ignoring source layer tl
+I1112 01:03:07.771950  6519 net.cpp:676] Ignoring source layer target_data_wlabels_tl_0_split
+I1112 01:03:07.771952  6519 net.cpp:676] Ignoring source layer target_labels_wlabels_tl_1_split
+I1112 01:03:07.771956  6519 net.cpp:676] Ignoring source layer concat_data
+I1112 01:03:07.771960  6519 net.cpp:676] Ignoring source layer split_target_data
+I1112 01:03:07.771965  6519 net.cpp:676] Ignoring source layer pv_source_conv1
+I1112 01:03:07.771967  6519 net.cpp:676] Ignoring source layer pv_source_pool1
+I1112 01:03:07.771970  6519 net.cpp:676] Ignoring source layer pv_source_conv2
+I1112 01:03:07.771975  6519 net.cpp:676] Ignoring source layer pv_source_pool2
+I1112 01:03:07.771977  6519 net.cpp:676] Ignoring source layer pv_source_ip1
+I1112 01:03:07.771986  6519 net.cpp:676] Ignoring source layer pv_target_features_pv_target_relu1_0_split
+I1112 01:03:07.771996  6519 net.cpp:676] Ignoring source layer slice_features_fc7
+I1112 01:03:07.772002  6519 net.cpp:676] Ignoring source layer s_fc7_slice_features_fc7_0_split
+I1112 01:03:07.772006  6519 net.cpp:676] Ignoring source layer split_target_fc7
+I1112 01:03:07.772008  6519 net.cpp:676] Ignoring source layer t_fc7_split_target_fc7_0_split
+I1112 01:03:07.772012  6519 net.cpp:676] Ignoring source layer fc8_source
+I1112 01:03:07.772019  6519 net.cpp:676] Ignoring source layer s_fc8_fc8_source_0_split
+I1112 01:03:07.772023  6519 net.cpp:676] Ignoring source layer t_fc8_fc8_target_0_split
+I1112 01:03:07.772029  6519 net.cpp:676] Ignoring source layer split_features_target_fc8
+I1112 01:03:07.772032  6519 net.cpp:676] Ignoring source layer tl_fc8_split_features_target_fc8_0_split
+I1112 01:03:07.772038  6519 net.cpp:676] Ignoring source layer loss_regression_s
+I1112 01:03:07.772042  6519 net.cpp:676] Ignoring source layer loss_regression_tl
+I1112 01:03:07.772047  6519 net.cpp:676] Ignoring source layer mmd_loss_fc7
+I1112 01:03:07.772052  6519 net.cpp:676] Ignoring source layer mmd_loss_fc8
+I1112 01:03:07.772056  6519 net.cpp:676] Ignoring source layer diff_loss_source
+I1112 01:03:07.772061  6519 net.cpp:676] Ignoring source layer diff_loss_target
+I1112 01:03:07.772065  6519 net.cpp:676] Ignoring source layer split_features_target_fc8
+I1112 01:03:07.772069  6519 net.cpp:676] Ignoring source layer res_desired
+I1112 01:03:07.772076  6519 net.cpp:676] Ignoring source layer res_loss
+I1112 01:03:09.384982  6519 solver.cpp:397]     Test net output #0: accuracy = 7.76911
+I1112 01:08:28.264546  6519 solver.cpp:330] Iteration 300, Testing net (#0)
+I1112 01:08:28.265458  6519 net.cpp:676] Ignoring source layer s
+I1112 01:08:28.265465  6519 net.cpp:676] Ignoring source layer source_data_s_0_split
+I1112 01:08:28.265470  6519 net.cpp:676] Ignoring source layer tl
+I1112 01:08:28.265473  6519 net.cpp:676] Ignoring source layer target_data_wlabels_tl_0_split
+I1112 01:08:28.265477  6519 net.cpp:676] Ignoring source layer target_labels_wlabels_tl_1_split
+I1112 01:08:28.265482  6519 net.cpp:676] Ignoring source layer concat_data
+I1112 01:08:28.265486  6519 net.cpp:676] Ignoring source layer split_target_data
+I1112 01:08:28.265489  6519 net.cpp:676] Ignoring source layer pv_source_conv1
+I1112 01:08:28.265493  6519 net.cpp:676] Ignoring source layer pv_source_pool1
+I1112 01:08:28.265498  6519 net.cpp:676] Ignoring source layer pv_source_conv2
+I1112 01:08:28.265502  6519 net.cpp:676] Ignoring source layer pv_source_pool2
+I1112 01:08:28.265506  6519 net.cpp:676] Ignoring source layer pv_source_ip1
+I1112 01:08:28.265513  6519 net.cpp:676] Ignoring source layer pv_target_features_pv_target_relu1_0_split
+I1112 01:08:28.265522  6519 net.cpp:676] Ignoring source layer slice_features_fc7
+I1112 01:08:28.265527  6519 net.cpp:676] Ignoring source layer s_fc7_slice_features_fc7_0_split
+I1112 01:08:28.265530  6519 net.cpp:676] Ignoring source layer split_target_fc7
+I1112 01:08:28.265533  6519 net.cpp:676] Ignoring source layer t_fc7_split_target_fc7_0_split
+I1112 01:08:28.265538  6519 net.cpp:676] Ignoring source layer fc8_source
+I1112 01:08:28.265542  6519 net.cpp:676] Ignoring source layer s_fc8_fc8_source_0_split
+I1112 01:08:28.265547  6519 net.cpp:676] Ignoring source layer t_fc8_fc8_target_0_split
+I1112 01:08:28.265550  6519 net.cpp:676] Ignoring source layer split_features_target_fc8
+I1112 01:08:28.265558  6519 net.cpp:676] Ignoring source layer tl_fc8_split_features_target_fc8_0_split
+I1112 01:08:28.265564  6519 net.cpp:676] Ignoring source layer loss_regression_s
+I1112 01:08:28.265568  6519 net.cpp:676] Ignoring source layer loss_regression_tl
+I1112 01:08:28.265573  6519 net.cpp:676] Ignoring source layer mmd_loss_fc7
+I1112 01:08:28.265578  6519 net.cpp:676] Ignoring source layer mmd_loss_fc8
+I1112 01:08:28.265581  6519 net.cpp:676] Ignoring source layer diff_loss_source
+I1112 01:08:28.265585  6519 net.cpp:676] Ignoring source layer diff_loss_target
+I1112 01:08:28.265588  6519 net.cpp:676] Ignoring source layer split_features_target_fc8
+I1112 01:08:28.265594  6519 net.cpp:676] Ignoring source layer res_desired
+I1112 01:08:28.265599  6519 net.cpp:676] Ignoring source layer res_loss
+I1112 01:08:29.892107  6519 solver.cpp:397]     Test net output #0: accuracy = 9.82493
+I1112 01:13:53.131947  6519 solver.cpp:330] Iteration 400, Testing net (#0)
+I1112 01:13:53.132246  6519 net.cpp:676] Ignoring source layer s
+I1112 01:13:53.132251  6519 net.cpp:676] Ignoring source layer source_data_s_0_split
+I1112 01:13:53.132253  6519 net.cpp:676] Ignoring source layer tl
+I1112 01:13:53.132256  6519 net.cpp:676] Ignoring source layer target_data_wlabels_tl_0_split
+I1112 01:13:53.132259  6519 net.cpp:676] Ignoring source layer target_labels_wlabels_tl_1_split
+I1112 01:13:53.132264  6519 net.cpp:676] Ignoring source layer concat_data
+I1112 01:13:53.132267  6519 net.cpp:676] Ignoring source layer split_target_data
+I1112 01:13:53.132270  6519 net.cpp:676] Ignoring source layer pv_source_conv1
+I1112 01:13:53.132273  6519 net.cpp:676] Ignoring source layer pv_source_pool1
+I1112 01:13:53.132277  6519 net.cpp:676] Ignoring source layer pv_source_conv2
+I1112 01:13:53.132279  6519 net.cpp:676] Ignoring source layer pv_source_pool2
+I1112 01:13:53.132282  6519 net.cpp:676] Ignoring source layer pv_source_ip1
+I1112 01:13:53.132294  6519 net.cpp:676] Ignoring source layer pv_target_features_pv_target_relu1_0_split
+I1112 01:13:53.132302  6519 net.cpp:676] Ignoring source layer slice_features_fc7
+I1112 01:13:53.132304  6519 net.cpp:676] Ignoring source layer s_fc7_slice_features_fc7_0_split
+I1112 01:13:53.132308  6519 net.cpp:676] Ignoring source layer split_target_fc7
+I1112 01:13:53.132311  6519 net.cpp:676] Ignoring source layer t_fc7_split_target_fc7_0_split
+I1112 01:13:53.132314  6519 net.cpp:676] Ignoring source layer fc8_source
+I1112 01:13:53.132316  6519 net.cpp:676] Ignoring source layer s_fc8_fc8_source_0_split
+I1112 01:13:53.132319  6519 net.cpp:676] Ignoring source layer t_fc8_fc8_target_0_split
+I1112 01:13:53.132323  6519 net.cpp:676] Ignoring source layer split_features_target_fc8
+I1112 01:13:53.132325  6519 net.cpp:676] Ignoring source layer tl_fc8_split_features_target_fc8_0_split
+I1112 01:13:53.132328  6519 net.cpp:676] Ignoring source layer loss_regression_s
+I1112 01:13:53.132333  6519 net.cpp:676] Ignoring source layer loss_regression_tl
+I1112 01:13:53.132335  6519 net.cpp:676] Ignoring source layer mmd_loss_fc7
+I1112 01:13:53.132339  6519 net.cpp:676] Ignoring source layer mmd_loss_fc8
+I1112 01:13:53.132340  6519 net.cpp:676] Ignoring source layer diff_loss_source
+I1112 01:13:53.132344  6519 net.cpp:676] Ignoring source layer diff_loss_target
+I1112 01:13:53.132347  6519 net.cpp:676] Ignoring source layer split_features_target_fc8
+I1112 01:13:53.132350  6519 net.cpp:676] Ignoring source layer res_desired
+I1112 01:13:53.132355  6519 net.cpp:676] Ignoring source layer res_loss
+I1112 01:13:54.852242  6519 solver.cpp:397]     Test net output #0: accuracy = 7.19959

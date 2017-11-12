@@ -1,0 +1,13 @@
+net: "./models/DAN/jointGazeNet/layers_dsnres_alltlabels.prototxt"
+test_iter: 100
+test_interval: 100
+base_lr: 0.001
+lr_policy: "inv"
+gamma: 0.001
+power: 0.75
+momentum: 0.9
+max_iter: 10000
+snapshot: 1000
+snapshot_prefix: "./models/DAN/jointGazeNet/trained_model"
+solver_mode: GPU
+snapshot_after_train: false

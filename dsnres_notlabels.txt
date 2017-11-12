@@ -1,0 +1,39 @@
+I1112 01:13:42.981979 30387 caffe.cpp:218] Using GPUs 3
+I1112 01:13:43.139134 30387 caffe.cpp:223] GPU 3: GeForce GTX 1080 Ti
+I1112 01:13:44.640877 30387 solver.cpp:44] Initializing solver from parameters: 
+test_iter: 100
+test_interval: 100
+base_lr: 0.001
+max_iter: 10000
+lr_policy: "inv"
+gamma: 0.001
+power: 0.75
+momentum: 0.9
+snapshot: 1000
+snapshot_prefix: "./models/DAN/jointGazeNet/trained_model_notlabels"
+solver_mode: GPU
+device_id: 3
+net: "./models/DAN/jointGazeNet/layers_dsnres_notlabels.prototxt"
+train_state {
+  level: 0
+  stage: ""
+}
+snapshot_after_train: false
+I1112 01:13:44.647655 30387 solver.cpp:87] Creating training net from net file: ./models/DAN/jointGazeNet/layers_dsnres_notlabels.prototxt
+[libprotobuf ERROR google/protobuf/text_format.cc:274] Error parsing text-format caffe.NetParameter: 597:10: Message type "caffe.NetParameter" has no field named "include".
+F1112 01:13:44.648587 30387 upgrade_proto.cpp:88] Check failed: ReadProtoFromTextFile(param_file, param) Failed to parse NetParameter file: ./models/DAN/jointGazeNet/layers_dsnres_notlabels.prototxt
+*** Check failure stack trace: ***
+    @     0x7fb54d66f5cd  google::LogMessage::Fail()
+    @     0x7fb54d671433  google::LogMessage::SendToLog()
+    @     0x7fb54d66f15b  google::LogMessage::Flush()
+    @     0x7fb54d671e1e  google::LogMessageFatal::~LogMessageFatal()
+    @     0x7fb54de34421  caffe::ReadNetParamsFromTextFileOrDie()
+    @     0x7fb54de50fdc  caffe::Solver<>::InitTrainNet()
+    @     0x7fb54de52305  caffe::Solver<>::Init()
+    @     0x7fb54de5261f  caffe::Solver<>::Solver()
+    @     0x7fb54dde35b1  caffe::Creator_SGDSolver<>()
+    @           0x40a9e8  train()
+    @           0x4072e0  main
+    @     0x7fb54c5df830  __libc_start_main
+    @           0x407b09  _start
+    @              (nil)  (unknown)
