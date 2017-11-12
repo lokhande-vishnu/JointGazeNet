@@ -540,7 +540,7 @@ layer {
   bottom: "s_fc7"
   bottom: "t_fc7"
   top: "fc7_mmd_loss"
-  loss_weight: 0.00000001
+  loss_weight: 0.00001
   mmd_param {
     kernel_num: 5
     kernel_mul: 2.0
